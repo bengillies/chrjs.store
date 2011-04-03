@@ -1,0 +1,18 @@
+A  generic store object, using the chrjs library.
+
+Includes mechanisms to interact with tiddlers, bags, recipes, etc on TiddlySpace
+and mechanisms to refresh those things and keep them up to date in the
+browser.
+
+The intention is that eventually, it will grow to encompass TiddlyWeb and not
+just TiddlySpace, though its main aim is to provide a useful object for syncing
+and managing tiddlers between the browser and server. The hope is that this will
+lead to more and easier/quicker to write lightweight SPAs, for when something
+like a full blown TiddlyWiki is too heavy duty.
+
+Please feel free to fork and send in pull requests/tests, etc as currently, it's
+very incomplete (no support for DELETE, etc).
+
+Dependencies: chrjs, jQuery, TiddlySpace.
+
+Written by Ben Gillies
