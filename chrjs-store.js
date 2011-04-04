@@ -48,12 +48,12 @@ tiddlyweb.Store = function() {
 				url: '/?limit=1', // get a tiddler from whatever is default
 				dataType: 'json',
 				success: function(data) {
-					var recipe = data[0].recipe || 'No Recipe Found',
-						match = recipe.match(/^(.*)_(private|public)$/);
+					var recipeName = data[0].recipe || 'No Recipe Found',
+						match = recipeName.match(/^(.*)_(private|public)$/);
 					if (match) {
 						space.name = match[1];
 						space.type = match[2];
-						self.recipe = new tiddlyweb.Recipe(recipe, '/');
+						self.recipe = new tiddlyweb.Recipe(recipeName, '/');
 						success(space);
 					} else {
 						error({
@@ -99,13 +99,12 @@ tiddlyweb.Store = function() {
 				return [];
 			}
 		};
-		if (binds[type]) {
-			if (name) {
+		if ((binds[type]) && (name)) {
 				binds[type][name + type] =
 					stripCallback(binds[type][name + type]);
-			} else {
-				binds[type].all = stripCallback(binds[type].all);
-			}
+		} else {
+			binds[type].all = stripCallback(binds[type].all);
+		}
 		}
 	};
 
@@ -172,15 +171,14 @@ tiddlyweb.Store = function() {
 
 	// refresh tiddlers contained in the recipe. Optional bag parameter will refresh tiddlers specifically in a bag
 	self.refreshTiddlers = function(bag) {
-		var getTiddlersSkinny = function(obj) {
-			var tiddlerCollection = obj.tiddlers();
-			tiddlerCollection.get(function(tiddlers) {
-				$.each(tiddlers, function(i, tiddler) {
-					var oldHash = (self.tiddlers[tiddler.title] &&
-							self.tiddlers[tiddler.title].fields) ?
-						self.tiddlers[tiddler.title].fields._hash : null;
+		var getTiddlersSkinny = function(container) {
+			var tiddlerCollection = container.tiddlers();
+			tiddlerCollection.get(function(result) {
+				$.each(result, function(i, tiddler) {
+					var oldRevision= (self.tiddlers[tiddler.title]) ?
+						self.tiddlers[tiddler.title].revision : null;
 					self.tiddlers[tiddler.title] = tiddler;
-					if (tiddler.fields._hash !== oldHash) {
+					if (tiddler.revision == oldRevision) {
 						self.emit('tiddler', null, tiddler);
 						self.emit('tiddler', tiddler.title, tiddler);
 					}
@@ -201,13 +199,11 @@ tiddlyweb.Store = function() {
 		};
 		if (bag && self.bags[bag]) {
 			getTiddlersSkinny(bag);
+		} else if (self.recipe) {
+			getTiddlersSkinny(self.recipe);
 		} else {
-			if (self.recipe) {
-				getTiddlersSkinny(self.recipe);
-			} else {
-				self.bind('recipe', null, recipeComplete);
-				self.refreshRecipe();
-			}
+			self.bind('recipe', null, recipeComplete);
+			self.refreshRecipe();
 		}
 	};
 
