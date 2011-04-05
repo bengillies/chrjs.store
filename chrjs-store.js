@@ -178,7 +178,7 @@ tiddlyweb.Store = function() {
 					var oldRevision= (self.tiddlers[tiddler.title]) ?
 						self.tiddlers[tiddler.title].revision : null;
 					self.tiddlers[tiddler.title] = tiddler;
-					if (tiddler.revision == oldRevision) {
+					if (tiddler.revision !== oldRevision) {
 						self.emit('tiddler', null, tiddler);
 						self.emit('tiddler', tiddler.title, tiddler);
 					}
