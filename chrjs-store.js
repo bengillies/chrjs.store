@@ -39,6 +39,7 @@ tiddlyweb.Store = function() {
 	self.pending = {};
 
 	// public functions
+
 	// takes in success and error callbacks. calls success with space object containing name and type
 	self.getSpace = function(success, error) {
 		if (space.name !== '') {
@@ -104,7 +105,6 @@ tiddlyweb.Store = function() {
 					stripCallback(binds[type][name + type]);
 		} else {
 			binds[type].all = stripCallback(binds[type].all);
-		}
 		}
 	};
 
@@ -217,10 +217,12 @@ tiddlyweb.Store = function() {
 		}
 	};
 
-	// tiddlers are retrieved in refreshTiddlers as skinny. This calls callback with the fat version.
-	self.getTiddler = function(tiddlerName, callback) {
+	// tiddlers are retrieved in refreshTiddlers as skinny. This calls callback with the fat version. Returns the skinny version if skinny is true
+	self.getTiddler = function(tiddlerName, callback, skinny) {
 		var tiddler = self.tiddlers[tiddlerName];
-		if (tiddler) {
+		if (skinny) {
+			return tiddler || self.pending[tiddlerName] || null;
+		} else if (tiddler) {
 			tiddler.get(function(tid) {
 				self.tiddlers[tid.title] = tid;
 				callback(tid);
@@ -230,8 +232,22 @@ tiddlyweb.Store = function() {
 					message: 'Error getting tiddler: ' + errMsg
 				};
 			});
+		} else if (self.pending[tiddlerName]) {
+			callback(self.pending[tiddlerName]);
 		} else {
 			callback(null);
+		}
+		return null;
+	};
+
+	// add a tiddler to the store. Adds to pending. Will only add tiddlers that do not already exist. Won't save until savePending
+	self.addTiddler = function(tiddler) {
+		var tiddlerExists = self.getTiddler(tiddler.title, null, true);
+		if (!tiddlerExists) {
+			self.pending[tiddler.title] = tiddler;
+			return tiddler;
+		} else {
+			return null;
 		}
 	};
 
