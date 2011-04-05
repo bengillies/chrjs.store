@@ -240,10 +240,10 @@ tiddlyweb.Store = function() {
 		return null;
 	};
 
-	// add a tiddler to the store. Adds to pending. Will only add tiddlers that do not already exist. Won't save until savePending
-	self.addTiddler = function(tiddler) {
+	// add a tiddler to the store. Adds to pending. If override is true, will add whether a tiddler exists or not. Won't save until savePending
+	self.addTiddler = function(tiddler, override) {
 		var tiddlerExists = self.getTiddler(tiddler.title, null, true);
-		if (!tiddlerExists) {
+		if ((!tiddlerExists) || (override)) {
 			self.pending[tiddler.title] = tiddler;
 			return tiddler;
 		} else {
