@@ -14,7 +14,7 @@
 
 tiddlyweb.Store = function() {
 	var self = (this instanceof tiddlyweb.Store) ? this : new tiddlyweb.Store(),
-		// private variables
+		// private
 		space = {
 			name: '',
 			type: 'private'
@@ -30,6 +30,22 @@ tiddlyweb.Store = function() {
 			tiddler: {
 				all: []
 			}
+		},
+		// TODO: remove once the new version of chrjs makes it to TiddlySpace
+		// takes a chrjs object and returns JSON
+		toJSON = function(object) {
+			var data = {};
+			$.each(object.data, function(i, name) {
+				var value = object[name];
+				if (value !== undefined) {
+					data[name] = value;
+				}
+			});
+			return $.toJSON(data);
+		},
+		getStorageID = function(tiddler) {
+			return encodeURIComponent(tiddler.bag.name) + '/' +
+				encodeURIComponent(tiddler.title);
 		};
 
 	// public variables
@@ -218,10 +234,13 @@ tiddlyweb.Store = function() {
 	};
 
 	// tiddlers are retrieved in refreshTiddlers as skinny. This calls callback with the fat version. Returns the skinny version if skinny is true
+	// returns the pending version if one exists before the version in tiddlers
 	self.getTiddler = function(tiddlerName, callback, skinny) {
 		var tiddler = self.tiddlers[tiddlerName];
 		if (skinny) {
-			return tiddler || self.pending[tiddlerName] || null;
+			return self.pending[tiddlerName] || tiddler || null;
+		} else if (self.pending[tiddlerName]) {
+			callback(self.pending[tiddlerName]);
 		} else if (tiddler) {
 			tiddler.get(function(tid) {
 				self.tiddlers[tid.title] = tid;
@@ -232,19 +251,22 @@ tiddlyweb.Store = function() {
 					message: 'Error getting tiddler: ' + errMsg
 				};
 			});
-		} else if (self.pending[tiddlerName]) {
-			callback(self.pending[tiddlerName]);
 		} else {
 			callback(null);
 		}
 		return null;
 	};
 
-	// add a tiddler to the store. Adds to pending. If override is true, will add whether a tiddler exists or not. Won't save until savePending
+	// add a tiddler to the store. Adds to pending (and localStorage). If override is true, will add whether a tiddler exists or not. Won't save until savePending
 	self.addTiddler = function(tiddler, override) {
-		var tiddlerExists = self.getTiddler(tiddler.title, null, true);
+		var tiddlerExists = self.getTiddler(tiddler.title, null, true),
+			localStorageID;
 		if ((!tiddlerExists) || (override)) {
 			self.pending[tiddler.title] = tiddler;
+			if ('localStorage' in window) {
+				localStorageID = getStorageID(tiddler);
+				window.localStorage.setItem(localStorageID, toJSON(tiddler));
+			}
 			return tiddler;
 		} else {
 			return null;
@@ -263,6 +285,9 @@ tiddlyweb.Store = function() {
 	self.saveTiddler = function(tiddler, callback) {
 		delete self.pending[tiddler.title];
 		tiddler.put(function(response) {
+			if ('localStorage' in window) {
+				window.localStorage.removeItem(getStorageID(tiddler));
+			}
 			self.tiddlers[response.title] = response;
 			self.emit('tiddler', null, response);
 			self.emit('tiddler', response.title, response);
@@ -273,6 +298,25 @@ tiddlyweb.Store = function() {
 				message: 'Error saving ' + tiddler.title + ': ' + errMsg
 			};
 		});
+	};
+
+	// import pending from localStorage
+	self.retrieveCached = function() {
+		if ('localStorage' in window) {
+			$.each(window.localStorage, function(i) {
+				var key = window.localStorage.key(i),
+					names = key.split('/'),
+					bagName = decodeURIComponent(names[0]),
+					name = decodeURIComponent(names[1]),
+					tiddlerJSON = $.parseJSON(window.localStorage[key]),
+					tiddler = new tiddlyweb.Tiddler(name);
+				tiddler.bag = new tiddlyweb.Bag(bagName, '/');
+				$.extend(tiddler, tiddlerJSON);
+				self.addTiddler(tiddler, true);
+				self.emit('tiddler', null, tiddler);
+				self.emit('tiddler', name, tiddler);
+			});
+		}
 	};
 
 	return self;
