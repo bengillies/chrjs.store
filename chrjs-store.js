@@ -233,14 +233,15 @@ tiddlyweb.Store = function() {
 		}
 	};
 
-	// tiddlers are retrieved in refreshTiddlers as skinny. This calls callback with the fat version. Returns the skinny version if skinny is true
-	// returns the pending version if one exists before the version in tiddlers
-	self.getTiddler = function(tiddlerName, callback, skinny) {
-		var tiddler = self.tiddlers[tiddlerName];
+	// returns the tiddler, either directly if no callback, or fresh from the server inside the callback if given
+	self.getTiddler = function(tiddlerName, callback) {
+		var pending = self.pending[tiddlerName] || null,
+			tiddler = pending || self.tiddlers[tiddlerName] || null,
+			skinny = (typeof(callback) === 'function') ? false : true;
 		if (skinny) {
-			return self.pending[tiddlerName] || tiddler || null;
-		} else if (self.pending[tiddlerName]) {
-			callback(self.pending[tiddlerName]);
+			return tiddler;
+		} else if (pending) {
+			callback(pending);
 		} else if (tiddler) {
 			tiddler.get(function(tid) {
 				self.tiddlers[tid.title] = tid;
@@ -259,7 +260,7 @@ tiddlyweb.Store = function() {
 
 	// add a tiddler to the store. Adds to pending (and localStorage). If override is true, will add whether a tiddler exists or not. Won't save until savePending
 	self.addTiddler = function(tiddler, override) {
-		var tiddlerExists = self.getTiddler(tiddler.title, null, true),
+		var tiddlerExists = self.getTiddler(tiddler.title),
 			localStorageID;
 		if ((!tiddlerExists) || (override)) {
 			self.pending[tiddler.title] = tiddler;
