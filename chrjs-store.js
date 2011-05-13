@@ -251,12 +251,26 @@ tiddlyweb.Store = function() {
 	};
 
 	// add a tiddler to the store. Adds to pending (and localStorage).  will add whether a tiddler exists or not. Won't save until savePending
+	// if bag is not present, will set bag to <space_name> + _public
 	self.addTiddler = function(tiddler) {
-		var localStorageID;
+		var saveLocal = function(tiddler) {
+				if ('localStorage' in window) {
+					localStorageID = getStorageID(tiddler);
+					window.localStorage.setItem(localStorageID,
+						tiddler.toJSON());
+				}
+			},
+			localStorageID;
 		self.pending[tiddler.title] = tiddler;
-		if ('localStorage' in window) {
-			localStorageID = getStorageID(tiddler);
-			window.localStorage.setItem(localStorageID, tiddler.toJSON());
+
+		if (!tiddler.bag) {
+			self.getSpace(function(space) {
+				var bagName = space.name + '_public';
+				tiddler = self.bags[bagName];
+				saveLocal(tiddler);
+			});
+		} else {
+			saveLocal(tiddler);
 		}
 
 		return self;
@@ -267,7 +281,9 @@ tiddlyweb.Store = function() {
 		var empty = true;
 		$.each(self.pending, function(i, tiddler) {
 			var title = tiddler.title;
-			if (empty) { empty = false };
+			if (empty) {
+				empty = false;
+			}
 			self.saveTiddler(tiddler, callback);
 		});
 		if (empty) {
