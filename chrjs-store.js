@@ -247,10 +247,10 @@ tiddlyweb.Store = function() {
 				self.tiddlers[tid.title] = tid;
 				callback(tid);
 			}, function(xhr, err, errMsg) {
-				throw {
+				callback(null, {
 					name: 'RetrieveTiddlersError',
 					message: 'Error getting tiddler: ' + errMsg
-				};
+				});
 			});
 		} else {
 			callback(null);
@@ -294,10 +294,10 @@ tiddlyweb.Store = function() {
 			self.emit('tiddler', response.title, response);
 			callback(response);
 		}, function(xhr, err, errMsg) {
-			throw {
+			callback(null, {
 				name: 'SaveError',
 				message: 'Error saving ' + tiddler.title + ': ' + errMsg
-			};
+			});
 		});
 	};
 
