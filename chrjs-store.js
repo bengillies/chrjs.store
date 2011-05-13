@@ -276,6 +276,12 @@ tiddlyweb.Store = function() {
 
 	// save any tiddlers in the pending object back to the server, and remove them from pending
 	self.savePending = function(callback) {
+		if (self.pending.length === 0) {
+			callback(null, {
+				name: 'EmptyError',
+				message: 'Nothing to save'
+			});
+		}
 		$.each(self.pending, function(i, tiddler) {
 			var title = tiddler.title;
 			self.saveTiddler(tiddler, callback);
