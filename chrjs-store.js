@@ -202,7 +202,7 @@ tiddlyweb.Store = function() {
 			}, function(xhr, err, errMsg) {
 				throw {
 					name: 'RetrieveTiddlersError',
-					message: 'Error getting tiddlers from ' + bagName +
+					message: 'Error getting tiddlers from ' + bag.name +
 						': ' + errMsg
 				};
 			});
