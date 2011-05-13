@@ -250,6 +250,21 @@ tiddlyweb.Store = function() {
 		return self;
 	};
 
+	// loops over every thing (tiddler (default) or bag) and calls callback with them
+	self.each = function(thing, cllbck) {
+		var thingIsCallback = (typeof thing === 'function');
+			callback = (thingIsCallback) ? thing : cllbck,
+			list = (!thingIsCallback && ['bag', 'tiddler'].indexOf(thing) !== -1) ?
+				thing + 's' : 'tiddlers';
+		for (title in self[list]) {
+			if (self[list].hasOwnProperty(title)) {
+				callback(self[list][title], title);
+			}
+		}
+
+		return self;
+	};
+
 	// add a tiddler to the store. Adds to pending (and localStorage).  will add whether a tiddler exists or not. Won't save until savePending
 	// if bag is not present, will set bag to <space_name> + _public
 	self.addTiddler = function(tiddler) {
