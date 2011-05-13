@@ -252,9 +252,9 @@ tiddlyweb.Store = function() {
 
 	// loops over every thing (tiddler (default) or bag) and calls callback with them
 	self.each = function(thing, cllbck) {
-		var thingIsCallback = (typeof thing === 'function');
-			callback = (thingIsCallback) ? thing : cllbck,
-			list = (!thingIsCallback && ['bag', 'tiddler'].indexOf(thing) !== -1) ?
+		var isCallback = (typeof thing === 'function');
+			callback = (isCallback) ? thing : cllbck,
+			list = (!isCallback && ['bag', 'tiddler'].indexOf(thing) !== -1) ?
 				thing + 's' : 'tiddlers';
 		for (title in self[list]) {
 			if (self[list].hasOwnProperty(title)) {
