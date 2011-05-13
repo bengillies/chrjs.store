@@ -225,16 +225,6 @@ tiddlyweb.Store = function() {
 		return self;
 	};
 
-	// return public, private or archive when given a bag name, to determine the type of bag
-	self.getBagType = function(bagName) {
-		var match =  bagName.match(/.*_(private|public|archive)$/);
-		if (match) {
-			return match[1];
-		} else {
-			return null;
-		}
-	};
-
 	// returns the tiddler, either directly if no callback, or fresh from the server inside the callback if given
 	self.getTiddler = function(tiddlerName, callback) {
 		var pending = self.pending[tiddlerName] || null,
