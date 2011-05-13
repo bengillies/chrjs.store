@@ -44,10 +44,10 @@ tiddlyweb.Store = function() {
 
 	// public functions
 
-	// takes in success and error callbacks. calls success with space object containing name and type
-	self.getSpace = function(success, error) {
+	// takes in a  callback. calls callback with space object containing name and type or error
+	self.getSpace = function(callback) {
 		if (space.name !== '') {
-			success(space);
+			callback(space);
 		} else {
 			$.ajax({
 				url: '/?limit=1', // get a tiddler from whatever is default
@@ -59,16 +59,16 @@ tiddlyweb.Store = function() {
 						space.name = match[1];
 						space.type = match[2];
 						self.recipe = new tiddlyweb.Recipe(recipeName, '/');
-						success(space);
+						callback(space);
 					} else {
-						error({
+						callback(null, {
 							name: 'NoSpaceMatchError',
 							message: data.recipe + ' is not a valid space'
 						});
 					}
 				},
 				error: function(xhr, txtStatus, err) {
-					error(err);
+					callback(null, err);
 				}
 			});
 		}
