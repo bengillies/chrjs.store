@@ -31,18 +31,6 @@ tiddlyweb.Store = function() {
 				all: []
 			}
 		},
-		// TODO: remove once the new version of chrjs makes it to TiddlySpace
-		// takes a chrjs object and returns JSON
-		toJSON = function(object) {
-			var data = {};
-			$.each(object.data, function(i, name) {
-				var value = object[name];
-				if (value !== undefined) {
-					data[name] = value;
-				}
-			});
-			return $.toJSON(data);
-		},
 		getStorageID = function(tiddler) {
 			return encodeURIComponent(tiddler.bag.name) + '/' +
 				encodeURIComponent(tiddler.title);
@@ -266,7 +254,7 @@ tiddlyweb.Store = function() {
 			self.pending[tiddler.title] = tiddler;
 			if ('localStorage' in window) {
 				localStorageID = getStorageID(tiddler);
-				window.localStorage.setItem(localStorageID, toJSON(tiddler));
+				window.localStorage.setItem(localStorageID, tiddler.toJSON());
 			}
 			return tiddler;
 		} else {
