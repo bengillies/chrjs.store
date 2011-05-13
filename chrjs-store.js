@@ -250,20 +250,16 @@ tiddlyweb.Store = function() {
 		return self;
 	};
 
-	// add a tiddler to the store. Adds to pending (and localStorage). If override is true, will add whether a tiddler exists or not. Won't save until savePending
-	self.addTiddler = function(tiddler, override) {
-		var tiddlerExists = self.getTiddler(tiddler.title),
-			localStorageID;
-		if ((!tiddlerExists) || (override)) {
-			self.pending[tiddler.title] = tiddler;
-			if ('localStorage' in window) {
-				localStorageID = getStorageID(tiddler);
-				window.localStorage.setItem(localStorageID, tiddler.toJSON());
-			}
-			return self;
-		} else {
-			return null;
+	// add a tiddler to the store. Adds to pending (and localStorage).  will add whether a tiddler exists or not. Won't save until savePending
+	self.addTiddler = function(tiddler) {
+		var localStorageID;
+		self.pending[tiddler.title] = tiddler;
+		if ('localStorage' in window) {
+			localStorageID = getStorageID(tiddler);
+			window.localStorage.setItem(localStorageID, tiddler.toJSON());
 		}
+
+		return self;
 	};
 
 	// save any tiddlers in the pending object back to the server, and remove them from pending
