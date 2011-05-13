@@ -119,7 +119,7 @@ tiddlyweb.Store = function() {
 	};
 
 	// fire an event manually. message is the object that gets passed into the event handlers
-	self.emit = function(type, name, message) {
+	self.trigger = function(type, name, message) {
 		if (binds[type]) {
 			$.each(binds[type].all, function(i, func) {
 				func(message);
@@ -142,7 +142,7 @@ tiddlyweb.Store = function() {
 				$.each(self.recipe.recipe, function(i, bag) {
 					self.bags[bag[0]] = new tiddlyweb.Bag(bag[0], '/');
 				});
-				self.emit('recipe', null, self.recipe);
+				self.trigger('recipe', null, self.recipe);
 			}, function(xhr, err, errMsg) {
 				// ignore
 			});
@@ -169,12 +169,12 @@ tiddlyweb.Store = function() {
 			$.each(self.bags, function(i, oldBag) {
 				oldBag.get(function(bag) {
 					self.bags[bag.name] = bag;
-					self.emit('bag', null, self.bags[bag.name]);
-					self.emit('bag', name, self.bags[bag.name]);
+					self.trigger('bag', null, self.bags[bag.name]);
+					self.trigger('bag', name, self.bags[bag.name]);
 				}, function(xhr, err, errMsg) {
-					// emit anyway...
-					self.emit('bag', null, oldBag);
-					self.emit('bag', oldBag.name, oldBag);
+					// trigger anyway...
+					self.trigger('bag', null, oldBag);
+					self.trigger('bag', oldBag.name, oldBag);
 				});
 			});
 		} else {
@@ -195,8 +195,8 @@ tiddlyweb.Store = function() {
 						self.tiddlers[tiddler.title].revision : null;
 					self.tiddlers[tiddler.title] = tiddler;
 					if (tiddler.revision !== oldRevision) {
-						self.emit('tiddler', null, tiddler);
-						self.emit('tiddler', tiddler.title, tiddler);
+						self.trigger('tiddler', null, tiddler);
+						self.trigger('tiddler', tiddler.title, tiddler);
 					}
 				});
 			}, function(xhr, err, errMsg) {
@@ -304,8 +304,8 @@ tiddlyweb.Store = function() {
 				window.localStorage.removeItem(getStorageID(tiddler));
 			}
 			self.tiddlers[response.title] = response;
-			self.emit('tiddler', null, response);
-			self.emit('tiddler', response.title, response);
+			self.trigger('tiddler', null, response);
+			self.trigger('tiddler', response.title, response);
 			callback(response);
 		}, function(xhr, err, errMsg) {
 			if (!self.pending[tiddler.title]) {
@@ -333,8 +333,8 @@ tiddlyweb.Store = function() {
 				tiddler.bag = new tiddlyweb.Bag(bagName, '/');
 				$.extend(tiddler, tiddlerJSON);
 				self.addTiddler(tiddler, true);
-				self.emit('tiddler', null, tiddler);
-				self.emit('tiddler', name, tiddler);
+				self.trigger('tiddler', null, tiddler);
+				self.trigger('tiddler', name, tiddler);
 			});
 		}
 
