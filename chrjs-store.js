@@ -72,6 +72,8 @@ tiddlyweb.Store = function() {
 				}
 			});
 		}
+
+		return self;
 	};
 
 	// takes thing to bind to (e.g. 'tiddler'), optional name (e.g. tiddler title), and callback that fires whenever object updates.
@@ -87,6 +89,8 @@ tiddlyweb.Store = function() {
 				binds[type].all.push(callback);
 			}
 		}
+
+		return self;
 	};
 
 	// same input as bind, though name and callback both optional. If callback present, any function the same (i.e. ===) as callback
@@ -110,6 +114,8 @@ tiddlyweb.Store = function() {
 		} else {
 			binds[type].all = stripCallback(binds[type].all);
 		}
+
+		return self;
 	};
 
 	// fire an event manually. message is the object that gets passed into the event handlers
@@ -124,6 +130,8 @@ tiddlyweb.Store = function() {
 				});
 			}
 		}
+
+		return self;
 	};
 
 	// refresh the main recipe (i.e. the one currently being used).
@@ -145,6 +153,8 @@ tiddlyweb.Store = function() {
 				}
 			});
 		}
+
+		return self;
 	};
 
 	// refresh the bags contained in the recipe. it is likely that some will return 403. This is expected
@@ -171,6 +181,8 @@ tiddlyweb.Store = function() {
 			self.bind('recipe', null, recipeComplete);
 			self.refreshRecipe();
 		}
+
+		return self;
 	};
 
 	// refresh tiddlers contained in the recipe. Optional bag parameter will refresh tiddlers specifically in a bag
@@ -209,6 +221,8 @@ tiddlyweb.Store = function() {
 			self.bind('recipe', null, recipeComplete);
 			self.refreshRecipe();
 		}
+
+		return self;
 	};
 
 	// return public, private or archive when given a bag name, to determine the type of bag
@@ -243,7 +257,7 @@ tiddlyweb.Store = function() {
 		} else {
 			callback(null);
 		}
-		return null;
+		return self;
 	};
 
 	// add a tiddler to the store. Adds to pending (and localStorage). If override is true, will add whether a tiddler exists or not. Won't save until savePending
@@ -256,7 +270,7 @@ tiddlyweb.Store = function() {
 				localStorageID = getStorageID(tiddler);
 				window.localStorage.setItem(localStorageID, tiddler.toJSON());
 			}
-			return tiddler;
+			return self;
 		} else {
 			return null;
 		}
@@ -276,6 +290,8 @@ tiddlyweb.Store = function() {
 				message: 'Nothing to save'
 			});
 		}
+
+		return self;
 	};
 
 	// save a tiddler from pending directly by name, and remove it
@@ -298,6 +314,8 @@ tiddlyweb.Store = function() {
 				message: 'Error saving ' + tiddler.title + ': ' + errMsg
 			});
 		});
+
+		return self;
 	};
 
 	// import pending from localStorage
@@ -317,6 +335,8 @@ tiddlyweb.Store = function() {
 				self.emit('tiddler', name, tiddler);
 			});
 		}
+
+		return self;
 	};
 
 	return self;
