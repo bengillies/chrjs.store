@@ -292,7 +292,7 @@ tiddlyweb.Store = function() {
 
 	// save a tiddler from pending directly by name, and remove it
 	self.saveTiddler = function(tiddler, callback) {
-		delete self.pending[tiddler.title];
+		delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
 		tiddler.put(function(response) {
 			if ('localStorage' in window) {
 				window.localStorage.removeItem(getStorageID(tiddler));
@@ -302,6 +302,9 @@ tiddlyweb.Store = function() {
 			self.emit('tiddler', response.title, response);
 			callback(response);
 		}, function(xhr, err, errMsg) {
+			if (!self.pending[tiddler.title]) {
+				self.pending[tiddler.title] = tiddler;
+			}
 			callback(null, {
 				name: 'SaveError',
 				message: 'Error saving ' + tiddler.title + ': ' + errMsg
