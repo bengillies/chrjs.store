@@ -336,7 +336,7 @@ tiddlyweb.Store = function() {
 		return self;
 	};
 
-	// add a tiddler to the store. Adds to pending (and localStorage).  will add whether a tiddler exists or not. Won't save until savePending
+	// add a tiddler to the store. Adds to pending (and localStorage).  will add whether a tiddler exists or not. Won't save until save
 	// if bag is not present, will set bag to <space_name> + _public
 	// if tiddler already in store[bag], will remove until saved to server
 	self.addTiddler = function(tiddler) {
@@ -372,7 +372,7 @@ tiddlyweb.Store = function() {
 	};
 
 	// save any tiddlers in the pending object back to the server, and remove them from pending
-	self.savePending = function(callback) {
+	self.save = function(callback) {
 		var empty = true;
 		$.each(self.pending, function(i, tiddler) {
 			var title = tiddler.title;
