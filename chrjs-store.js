@@ -19,7 +19,6 @@ tiddlyweb.Store = function() {
 			name: '',
 			type: 'private'
 		},
-		routes = null,
 		binds = {
 			recipe: {
 				all: []
