@@ -418,6 +418,55 @@ tiddlyweb.Store = function() {
 		return self;
 	};
 
+	// remove a tiddler, either locally from pending, from the store, or delete from the server.
+	// callback is optional. options can be a tiddler object, a string with the title, or an object with the following:
+	// tiddler, delete (bool, delete from server), callback, pending (bool, delete pending only)
+	// default is don't delete from server, only remove pending
+	self.remove = function(options, cllbck) {
+		var isTiddler = (options instanceof tiddlyweb.Tiddler),
+			tiddler = (typeof options === 'string') ? self.getTiddler(options) :
+				(isTiddler) ? options : options.tiddler || null,
+			callback = cllbck || options.callback || null,
+			del = !isTiddler && options.delete || false,
+			pending = !isTiddler && options.pending || true,
+			removeLocal = function(tiddler, pending, store) {
+				var bagName = tiddler.bag.name;
+				if (pending) {
+					delete self.pending[tiddler.title];
+				}
+				if (store) {
+					bagName = tiddler.bag.name;
+					delete store[bagName].tiddlers[tiddler.title];
+				}
+				if (callback) {
+					callback(tiddler);
+				}
+			};
+
+		if (!tiddler) {
+			return self;
+		}
+		if (del) {
+			tiddler.delete(function() {
+				removeLocal(tiddler, true, true);
+			}, function(xhr, err, errMsg) {
+				if (callback) {
+					callback(null, {
+						name: 'DeleteError',
+						message: 'Error deleting ' + tiddler.title + ': '
+							+ errMsg
+					});
+				}
+			});
+		} else if (pending) {
+			removeLocal(tiddler, true, false);
+		} else {
+			removeLocal(tiddler, false, true);
+		}
+
+		return self;
+	};
+
 	// import pending from localStorage
 	self.retrieveCached = function() {
 		if ('localStorage' in window) {
