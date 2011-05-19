@@ -428,7 +428,7 @@ tiddlyweb.Store = function() {
 			tiddler = (typeof options === 'string') ? self.getTiddler(options) :
 				(isTiddler) ? options : options.tiddler || null,
 			callback = cllbck || options.callback || null,
-			del = !isTiddler && options.delete || false,
+			del = !isTiddler && options['delete'] || false,
 			pending = !isTiddler && options.pending || true,
 			removeLocal = function(tiddler, pending, synced) {
 				var bagName = tiddler.bag.name;
@@ -448,7 +448,7 @@ tiddlyweb.Store = function() {
 			return self;
 		}
 		if (del) {
-			tiddler.delete(function() {
+			tiddler['delete'](function() {
 				removeLocal(tiddler, true, true);
 			}, function(xhr, err, errMsg) {
 				if (callback) {
