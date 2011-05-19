@@ -90,7 +90,8 @@ tiddlyweb.Store = function() {
 				url: '/?limit=1', // get a tiddler from whatever is default
 				dataType: 'json',
 				success: function(data) {
-					var recipeName = data[0].recipe || 'No Recipe Found',
+					var recipeName = ((data instanceof Array) ? data[0].recipe :
+							data.recipe) || 'No Recipe Found',
 						match = recipeName.match(/^(.*)_(private|public)$/);
 					if (match) {
 						space.name = match[1];
@@ -429,12 +430,12 @@ tiddlyweb.Store = function() {
 			callback = cllbck || options.callback || null,
 			del = !isTiddler && options.delete || false,
 			pending = !isTiddler && options.pending || true,
-			removeLocal = function(tiddler, pending, store) {
+			removeLocal = function(tiddler, pending, synced) {
 				var bagName = tiddler.bag.name;
 				if (pending) {
 					delete self.pending[tiddler.title];
 				}
-				if (store) {
+				if (synced) {
 					bagName = tiddler.bag.name;
 					delete store[bagName].tiddlers[tiddler.title];
 				}
