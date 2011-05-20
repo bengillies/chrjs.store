@@ -10,6 +10,8 @@
  * Written by Ben Gillies
  */
 
+/*global tiddlyweb, window, jQuery*/
+
 (function($) {
 
 tiddlyweb.Store = function() {
@@ -44,36 +46,35 @@ tiddlyweb.Store = function() {
 
 			return obj;
 		},
-		// add/replace the thing in the store object with the thing passed in.
-		// different to addTiddler, which only adds to pending
-		replace = function(thing) {
-			if (thing instanceof tiddlyweb.Bag) {
-				if (store[thing.name]) {
-					store[thing.name].thing = thing;
-				} else {
-					store[thing.name] = resource(thing);
-				}
-				self.trigger('bag', null, thing);
-				self.trigger('bag', thing.name, thing);
-				return true;
+		replace, store = {};
+	// add/replace the thing in the store object with the thing passed in.
+	// different to addTiddler, which only adds to pending
+	replace = function(thing) {
+		if (thing instanceof tiddlyweb.Bag) {
+			if (store[thing.name]) {
+				store[thing.name].thing = thing;
 			} else {
-				// add the tiddler to the appropriate place in the store. If it comes with a new bag, add that as well
-				var bagName = thing.bag.name,
-					oldBag = (!store[bagName]) ? !replace(new Bag(bagName, '/')) :
-						store[bagName],
-					oldRevision = (!oldBag ||
-						!oldBag.tiddlers[thing.title]) ? null :
-						oldBag.tiddlers[thing.title].revision;
-				store[bagName].tiddlers[thing.title] = resource(thing);
-				if (thing.revision !== oldRevision) {
-					self.trigger('tiddler', null, thing);
-					self.trigger('tiddler', thing.title, thing);
-				}
-				return true;
+				store[thing.name] = resource(thing);
 			}
-			return false;
-		},
-		store = {};
+			self.trigger('bag', null, thing);
+			self.trigger('bag', thing.name, thing);
+			return true;
+		} else {
+			// add the tiddler to the appropriate place in the store. If it comes with a new bag, add that as well
+			var bagName = thing.bag.name,
+				oldBag = (!store[bagName]) ? !replace(new tiddlyweb.Bag(bagName,
+					'/')) : store[bagName],
+				oldRevision = (!oldBag ||
+					!oldBag.tiddlers[thing.title]) ? null :
+					oldBag.tiddlers[thing.title].revision;
+			store[bagName].tiddlers[thing.title] = resource(thing);
+			if (thing.revision !== oldRevision) {
+				self.trigger('tiddler', null, thing);
+				self.trigger('tiddler', thing.title, thing);
+			}
+			return true;
+		}
+	};
 
 	// public variables
 	self.recipe = null;
@@ -197,7 +198,8 @@ tiddlyweb.Store = function() {
 
 	// refresh the bags contained in the recipe. it is likely that some will return 403. This is expected
 	self.refreshBags = function() {
-		var recipeComplete = function() {
+		var recipeComplete;
+		recipeComplete = function() {
 			if (!$.isEmptyObject(store)) {
 				self.refreshBags();
 			}
@@ -235,7 +237,7 @@ tiddlyweb.Store = function() {
 						': ' + errMsg
 				};
 			});
-		},
+		}, recipeComplete;
 		recipeComplete = function() {
 			if (self.recipe) {
 				self.refreshTiddlers();
@@ -270,7 +272,7 @@ tiddlyweb.Store = function() {
 					}
 				});
 				return tiddler;
-			})(),
+			}()),
 			skinny = (typeof(callback) === 'function') ? false : true;
 		if (skinny) {
 			return tiddler;
@@ -315,7 +317,7 @@ tiddlyweb.Store = function() {
 		var callback = (typeof thing === 'function') ? thing : cllbck,
 			loopTiddlers = (thing === 'bag') ? false : true,
 			loopOver = function(list, callback) {
-				var finished = true;
+				var finished = true, name;
 				for (name in list) {
 					if (list.hasOwnProperty(name)) {
 						if (callback(list[name], name) === false) {
@@ -350,13 +352,13 @@ tiddlyweb.Store = function() {
 	// if tiddler already in store[bag], will remove until saved to server
 	self.addTiddler = function(tiddler) {
 		var saveLocal = function(tiddler) {
-				if ('localStorage' in window) {
-					localStorageID = getStorageID(tiddler);
-					window.localStorage.setItem(localStorageID,
-						tiddler.toJSON());
-				}
-			},
-			localStorageID;
+			var localStorageID;
+			if (window.hasOwnProperty('localStorage')) {
+				localStorageID = getStorageID(tiddler);
+				window.localStorage.setItem(localStorageID,
+					tiddler.toJSON());
+			}
+		};
 		self.pending[tiddler.title] = resource(tiddler, true);
 
 		if (!tiddler.bag) {
@@ -380,7 +382,6 @@ tiddlyweb.Store = function() {
 	self.save = function(callback) {
 		var empty = true;
 		$.each(self.pending, function(i, tiddler) {
-			var title = tiddler.title;
 			if (empty) {
 				empty = false;
 			}
@@ -400,7 +401,7 @@ tiddlyweb.Store = function() {
 	self.saveTiddler = function(tiddler, callback) {
 		delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
 		tiddler.put(function(response) {
-			if ('localStorage' in window) {
+			if (window.hasOwnProperty('localStorage')) {
 				window.localStorage.removeItem(getStorageID(tiddler));
 			}
 			response = resource(response);
@@ -428,8 +429,8 @@ tiddlyweb.Store = function() {
 			tiddler = (typeof options === 'string') ? self.getTiddler(options) :
 				(isTiddler) ? options : options.tiddler || null,
 			callback = cllbck || options.callback || null,
-			del = !isTiddler && options['delete'] || false,
-			pending = !isTiddler && options.pending || true,
+			del = (!isTiddler && options['delete']) || false,
+			pending = (!isTiddler && options.pending) || true,
 			removeLocal = function(tiddler, pending, synced) {
 				var bagName = tiddler.bag.name;
 				if (pending) {
@@ -470,7 +471,7 @@ tiddlyweb.Store = function() {
 
 	// import pending from localStorage
 	self.retrieveCached = function() {
-		if ('localStorage' in window) {
+		if (window.hasOwnProperty('localStorage')) {
 			$.each(window.localStorage, function(i) {
 				var key = window.localStorage.key(i),
 					names = key.split('/'),
@@ -490,4 +491,4 @@ tiddlyweb.Store = function() {
 	return self;
 };
 
-})(jQuery);
+}(jQuery));
