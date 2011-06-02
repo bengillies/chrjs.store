@@ -14,8 +14,133 @@
 
 (function($) {
 
+// the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
+var Tiddlers = function(store) {
+	this.store = store;
+	return this;
+};
+
+Tiddlers.prototype = [];
+
+// private functions
+var contains = function(field, match) {
+	return (field && field.indexOf(match) !== -1) ? true : false;
+};
+
+// public functions
+$.extend(Tiddlers.prototype, {
+	tag: function(match) {
+		return this.map(function(tiddler) {
+			return contains(tiddler.tags, match);
+		});
+	},
+	text: function(match) {
+		return this.map(function(tiddler) {
+			return contains(tiddler.text, match);
+		});
+	},
+	title: function(match) {
+		return this.map(function(tiddler) {
+			return contains(tiddler.title, match);
+		});
+	},
+	attr: function(name, match) {
+		var chkExists = (!match) ? true : false,
+			getValue = function(tiddler) {
+				return tiddler[name] || (tiddler.fields && tiddler.fields[name]);
+			};
+		return this.map(function(tiddler) {
+			if (chkExists) {
+				return (getValue(tiddler)) ? true : false;
+			} else {
+				return contains(getValue(tiddler), match);
+			}
+		});
+	},
+	bag: function(name) {
+		return this.map(function(tiddler) {
+			var bag = tiddler.bag && tiddler.bag.name;
+			return (bag === name);
+		});
+	},
+	// the space the tiddler originates from (i.e. not just included in)
+	space: function(name) {
+		var regex = /(_public|_private|_archive)$/;
+		return this.map(function(tiddler) {
+			var bag = tiddler.bag && tiddler.bag.name;
+			return (bag.replace(regex, '') === name);
+		});
+	},
+	// tiddlers that have been changed (i.e. not synced), lastSynced is optional and if present matches tiddlers that were synced before lastSynced
+	dirty: function(lastSynced) {
+		if (!lastSynced) {
+			return this.map(function(tiddler) {
+				return (tiddler.lastSync) ? false : true;
+			});
+		} else {
+			return this.map(function(tiddler) {
+				if (tiddler.lastSync) {
+					// return true if tiddler.lastSync is older than lastSynced
+					return (+tiddler.lastSync < +lastSynced);
+				} else {
+					return true;
+				}
+			});
+		}
+	},
+	each: function(fn) {
+		var self = this;
+		$.each(self, function(i, tiddler) {
+			fn.apply(self, [tiddler, i]);
+		});
+		return self;
+	},
+	// returns a new instance of Tiddlers
+	map: function(fn) {
+		var self = this,
+			result = new Tiddlers(this.store);
+		$.each(self, function(i, tiddler) {
+			if (fn.apply(self, [tiddler, i])) {
+				result.push(tiddler);
+			}
+		});
+		return result;
+	},
+	// pass in an initial value and a callback. Callback gets tiddler and current result, and returns new result
+	reduce: function(init, fn) {
+		var self = this, result = init;
+		$.each(self, function(i, tiddler) {
+			result = fn.apply(self, [tiddler, result]);
+		});
+		return result;
+	},
+	// save tiddlers currently in list. Callback happens for each tiddler
+	save: function(callback) {
+		var self = this;
+		$.each(self, function(i, tiddler) {
+			self.store.saveTiddler(tiddler, callback);
+		});
+		return self;
+	},
+	// add one or more tiddlers to the current Tiddlers object and the attached store
+	add: function(tiddlers) {
+		var self = this;
+		if (tiddlers instanceof tiddlyweb.Tiddler) {
+			self.push(tiddlers);
+			self.store.addTiddler(tiddlers);
+		} else {
+			$.each(tiddlers, function(i, tiddler) {
+				self.push(tiddler);
+				self.store.addTiddler(tiddlers);
+			});
+		}
+		return self;
+	}
+});
+
 tiddlyweb.Store = function() {
-	var self = (this instanceof tiddlyweb.Store) ? this : new tiddlyweb.Store(),
+	// take in an optional filter and return a Tiddlers object with the tiddlers that match it
+	var self,
 		// private
 		space = {
 			name: '',
@@ -77,6 +202,21 @@ tiddlyweb.Store = function() {
 	};
 
 	// public variables
+	self = function(name, match) {
+		var allTiddlers = new Tiddlers(this);
+
+		self.each(function(tiddler, title) {
+			allTiddlers.push(tiddler);
+		});
+
+		if (allTiddlers[name]) {
+			allTiddlers = allTiddlers[name](match);
+		} else {
+			allTiddlers = allTiddlers.attr(name, match);
+		}
+
+		return allTiddlers;
+	};
 	self.recipe = null;
 	self.pending = {};
 
