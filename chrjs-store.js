@@ -71,6 +71,19 @@ $.extend(Tiddlers.prototype, {
 			return (bag.replace(regex, '') === name);
 		});
 	},
+	// no arguments matches the default recipe
+	recipe: function(name) {
+		var matchCurrent = (name === undefined) ? true : false, recipe;
+		if (matchCurrent) {
+			recipe = this.store.recipe.name;
+		}
+		return this.map(function(tiddler) {
+			if (!matchCurrent) {
+				recipe = tiddler.recipe && tiddler.recipe.name;
+			}
+			return (recipe === name);
+		});
+	},
 	// tiddlers that have been changed (i.e. not synced), lastSynced is optional and if present matches tiddlers that were synced before lastSynced
 	dirty: function(lastSynced) {
 		if (!lastSynced) {
@@ -113,6 +126,15 @@ $.extend(Tiddlers.prototype, {
 			result = fn.apply(self, [tiddler, result]);
 		});
 		return result;
+	},
+	// bind fn to the current set of matched tiddlers. fn will run any time a tiddler that matches the current filters is updated
+	bind: function(fn) {
+		var self = this, filters = 1;// get filters currently applied
+		this.store.bind('tiddler', function(tiddler) {
+			if (filters([tiddler])) {
+				fn.apply(self, [tiddler]);
+			}
+		});
 	},
 	// save tiddlers currently in list. Callback happens for each tiddler
 	save: function(callback) {
@@ -211,7 +233,7 @@ tiddlyweb.Store = function() {
 
 		if (allTiddlers[name]) {
 			allTiddlers = allTiddlers[name](match);
-		} else {
+		} else if (name) {
 			allTiddlers = allTiddlers.attr(name, match);
 		}
 
