@@ -129,7 +129,7 @@ $.extend(Tiddlers.prototype, {
 	},
 	// bind fn to the current set of matched tiddlers. fn will run any time a tiddler that matches the current filters is updated
 	bind: function(fn) {
-		var self = this, filters = 1;// get filters currently applied
+		var self = this, filters = function() {};// get filters currently applied
 		this.store.bind('tiddler', function(tiddler) {
 			if (filters([tiddler])) {
 				fn.apply(self, [tiddler]);
