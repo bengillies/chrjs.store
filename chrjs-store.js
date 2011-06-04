@@ -31,17 +31,17 @@ var contains = function(field, match) {
 $.extend(Tiddlers.prototype, {
 	tag: function(match) {
 		return this.map(function(tiddler) {
-			return contains(tiddler.tags, match);
+			return contains(tiddler.tags, match) ? tiddler : null;
 		});
 	},
 	text: function(match) {
 		return this.map(function(tiddler) {
-			return contains(tiddler.text, match);
+			return contains(tiddler.text, match) ? tiddler : null;
 		});
 	},
 	title: function(match) {
 		return this.map(function(tiddler) {
-			return contains(tiddler.title, match);
+			return contains(tiddler.title, match) ? tiddler : null;
 		});
 	},
 	attr: function(name, match) {
@@ -51,16 +51,16 @@ $.extend(Tiddlers.prototype, {
 			};
 		return this.map(function(tiddler) {
 			if (chkExists) {
-				return (getValue(tiddler)) ? true : false;
+				return (getValue(tiddler)) ? tiddler : null;
 			} else {
-				return contains(getValue(tiddler), match);
+				return contains(getValue(tiddler), match) ? tiddler : null;
 			}
 		});
 	},
 	bag: function(name) {
 		return this.map(function(tiddler) {
 			var bag = tiddler.bag && tiddler.bag.name;
-			return (bag === name);
+			return (bag === name) ? tiddler : null;
 		});
 	},
 	// the space the tiddler originates from (i.e. not just included in)
@@ -68,7 +68,7 @@ $.extend(Tiddlers.prototype, {
 		var regex = /(_public|_private|_archive)$/;
 		return this.map(function(tiddler) {
 			var bag = tiddler.bag && tiddler.bag.name;
-			return (bag.replace(regex, '') === name);
+			return (bag.replace(regex, '') === name) ? tiddler : null;
 		});
 	},
 	// no arguments matches the default recipe
@@ -81,22 +81,22 @@ $.extend(Tiddlers.prototype, {
 			if (!matchCurrent) {
 				recipe = tiddler.recipe && tiddler.recipe.name;
 			}
-			return (recipe === name);
+			return (recipe === name) ? tiddler : null;
 		});
 	},
 	// tiddlers that have been changed (i.e. not synced), lastSynced is optional and if present matches tiddlers that were synced before lastSynced
 	dirty: function(lastSynced) {
 		if (!lastSynced) {
 			return this.map(function(tiddler) {
-				return (tiddler.lastSync) ? false : true;
+				return (tiddler.lastSync) ? null : tiddler;
 			});
 		} else {
 			return this.map(function(tiddler) {
 				if (tiddler.lastSync) {
 					// return true if tiddler.lastSync is older than lastSynced
-					return (+tiddler.lastSync < +lastSynced);
+					return (+tiddler.lastSync < +lastSynced) ? tiddler : null;
 				} else {
-					return true;
+					return tiddler;
 				}
 			});
 		}
@@ -113,8 +113,9 @@ $.extend(Tiddlers.prototype, {
 		var self = this,
 			result = new Tiddlers(this.store);
 		$.each(self, function(i, tiddler) {
-			if (fn.apply(self, [tiddler, i])) {
-				result.push(tiddler);
+			var mappedTiddler = fn.apply(self, [tiddler, i]);
+			if (mappedTiddler) {
+				result.push(mappedTiddler);
 			}
 		});
 		return result;
@@ -127,14 +128,16 @@ $.extend(Tiddlers.prototype, {
 		});
 		return result;
 	},
-	// bind fn to the current set of matched tiddlers. fn will run any time a tiddler that matches the current filters is updated
+	// bind fn to the current set of matched tiddlers.
 	bind: function(fn) {
-		var self = this, filters = function() {};// get filters currently applied
-		this.store.bind('tiddler', function(tiddler) {
-			if (filters([tiddler])) {
+		var self = this,
+			bindFunc = function(tiddler) {;
 				fn.apply(self, [tiddler]);
-			}
+			};
+		this.each(function(tiddler) {
+			self.store.bind('tiddler', tiddler.title, bindFunc);
 		});
+		return self;
 	},
 	// save tiddlers currently in list. Callback happens for each tiddler
 	save: function(callback) {
