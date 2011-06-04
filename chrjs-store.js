@@ -15,8 +15,14 @@
 (function($) {
 
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
-var Tiddlers = function(store) {
+var Tiddlers = function(store, tiddlers) {
+	var self = this;
 	this.store = store;
+	if (tiddlers) {
+		$.each(tiddlers, function(i, tiddler) {
+			self.push(tiddler);
+		});
+	}
 	return this;
 };
 
@@ -196,6 +202,38 @@ tiddlyweb.Store = function() {
 
 			return obj;
 		},
+		removeDeleted = function(container, tiddlers) {
+			var storeTids, newTiddlers = new Tiddlers(self, tiddlers),
+				deleted = [];
+			newTiddlers = newTiddlers.map(function(tiddler) {
+				return tiddler.title;
+			});
+
+			if (container instanceof tiddlyweb.Bag) {
+				storeTids = store[container.name];
+				$.each(storeTids, function(title, tiddler) {
+					if (newTiddlers.indexOf(tiddler.title) === -1) {
+						deleted.push([container.name, title]);
+					}
+				});
+			} else if (container instanceof tiddlyweb.Recipe) {
+				self.each(function(tiddler, title) {
+					if ((tiddler.recipe &&
+							tiddler.recipe.name === container.name) &&
+							(newTiddlers.indexOf(tiddler.title) === -1)) {
+						deleted.push([tiddler.bag.name, title]);
+					}
+				});
+			}
+			// deleted now contains everything tht has been deleted
+			$.each(deleted, function(i, toDelete) {
+				var title = toDelete[1], bag = toDelete[0],
+					tiddler = store[bag].tiddlers[title];
+				delete store[bag].tiddlers[title];
+				self.trigger('tiddler', null, [tiddler, 'deleted']);
+				self.trigger('tiddler', title, [tiddler, 'deleted']);
+			});
+		},
 		replace, store = {};
 	// add/replace the thing in the store object with the thing passed in.
 	// different to addTiddler, which only adds to pending
@@ -322,15 +360,16 @@ tiddlyweb.Store = function() {
 		return self;
 	};
 
-	// fire an event manually. message is the object that gets passed into the event handlers
-	self.trigger = function(type, name, message) {
+	// fire an event manually. args is the object that gets passed into the event handlers
+	self.trigger = function(type, name, args) {
+		var message = (args instanceof Array) ? args : [args];
 		if (binds[type]) {
 			$.each(binds[type].all, function(i, func) {
 				func(message);
 			});
 			if (name && binds[type][name + type]) {
 				$.each(binds[type][name + type], function(i, func) {
-					func(message);
+					func.apply(self, message);
 				});
 			}
 		}
@@ -395,6 +434,7 @@ tiddlyweb.Store = function() {
 				$.each(result, function(i, tiddler) {
 					replace(tiddler);
 				});
+				removeDeleted(container, result);
 			}, function(xhr, err, errMsg) {
 				throw {
 					name: 'RetrieveTiddlersError',
@@ -405,17 +445,15 @@ tiddlyweb.Store = function() {
 		}, recipeComplete;
 		recipeComplete = function() {
 			if (self.recipe) {
-				self.refreshTiddlers();
+				self.refreshTiddlers().unbind('recipe', null, recipeComplete);
 			}
-			self.unbind('recipe', null, recipeComplete);
 		};
 		if (bag && store[bag.name]) {
 			getTiddlersSkinny(bag);
 		} else if (self.recipe) {
 			getTiddlersSkinny(self.recipe);
 		} else {
-			self.bind('recipe', null, recipeComplete);
-			self.refreshRecipe();
+			self.bind('recipe', null, recipeComplete).refreshRecipe();
 		}
 
 		return self;
