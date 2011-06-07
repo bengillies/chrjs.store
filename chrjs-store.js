@@ -137,7 +137,7 @@ $.extend(Tiddlers.prototype, {
 	// bind fn to the current set of matched tiddlers.
 	bind: function(fn) {
 		var self = this,
-			bindFunc = function(tiddler) {;
+			bindFunc = function(tiddler) {
 				fn.apply(self, [tiddler]);
 			};
 		this.each(function(tiddler) {
@@ -202,6 +202,7 @@ tiddlyweb.Store = function() {
 
 			return obj;
 		},
+		store = {},
 		removeDeleted = function(container, tiddlers) {
 			var storeTids, newTiddlers = new Tiddlers(self, tiddlers),
 				deleted = [];
@@ -234,7 +235,7 @@ tiddlyweb.Store = function() {
 				self.trigger('tiddler', title, [tiddler, 'deleted']);
 			});
 		},
-		replace, store = {};
+		replace;
 	// add/replace the thing in the store object with the thing passed in.
 	// different to addTiddler, which only adds to pending
 	replace = function(thing) {
