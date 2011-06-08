@@ -568,7 +568,8 @@ tiddlyweb.Store = function() {
 		if (!tiddler.bag) {
 			self.getSpace(function(space) {
 				var bagName = space.name + '_public';
-				tiddler.bag = self.getBag(bagName);
+				tiddler.bag = self.getBag(bagName) ||
+					new tiddlyweb.Bag(bagName, '/');
 				saveLocal(tiddler);
 				self.trigger('tiddler', null, tiddler);
 				self.trigger('tiddler', tiddler.title, tiddler);

@@ -52,5 +52,5 @@ var extractResults = function($el) {
 	console.log('-----------------------------------------------------------');
 	console.log('Passed: '+ passed + ', Failed: '+ failed + ' Total: '+ total);
 	console.log('');
-	return failed;
+	return (failed) ? 1 : 0;
 };

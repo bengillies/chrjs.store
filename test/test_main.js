@@ -18,10 +18,33 @@ module('chrjs.store', {
 	}
 });
 
-test('Loop Tiddlers', function() {
+test('Count Tiddlers', function() {
 	var count = 0;
 	ts.each(function(tiddler) {
 		count++;
 	});
 	strictEqual(count, 2);
+});
+
+test('Add Tiddlers', function() {
+	var tid = new tiddlyweb.Tiddler('Bar');
+	tid.text = 'A New Tiddler';
+	var addedTid = ts.addTiddler(tid).getTiddler('Bar');
+	strictEqual(addedTid.title, 'Bar');
+	strictEqual(addedTid.text, 'A New Tiddler');
+	equal(addedTid.lastSync, undefined);
+	strictEqual(addedTid.bag.name, 'foo_public');
+});
+
+test('Save Tiddlers', function() {
+	var count = 0;
+	ts.each(function(tiddler) {
+		equal(tiddler.lastSync, undefined);
+		count++;
+	});
+	ts.save(function(tiddler) {
+		notEqual(tiddler.lastSync, undefined);
+		count--;
+	});
+	strictEqual(count, 0);
 });
