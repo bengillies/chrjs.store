@@ -366,7 +366,7 @@ tiddlyweb.Store = function() {
 		var message = (args instanceof Array) ? args : [args];
 		if (binds[type]) {
 			$.each(binds[type].all, function(i, func) {
-				func(message);
+				func.apply(self, message);
 			});
 			if (name && binds[type][name + type]) {
 				$.each(binds[type][name + type], function(i, func) {
@@ -462,7 +462,7 @@ tiddlyweb.Store = function() {
 
 	// returns the tiddler, either directly if no callback, or fresh from the server inside the callback if given
 	// returns pending first, then in recipe order (ie last bag first) if > 1 exist
-	self.getTiddler = function(tiddlerName, callback) {
+	self.getTiddler = function(tiddlerName, callback, render) {
 		var pending = self.pending[tiddlerName] || null,
 			tiddler = (function() {
 				var tiddler = pending;
@@ -491,7 +491,7 @@ tiddlyweb.Store = function() {
 					name: 'RetrieveTiddlersError',
 					message: 'Error getting tiddler: ' + errMsg
 				});
-			});
+			}, (render) ? '?render=1' : '');
 		} else {
 			callback(null);
 		}
