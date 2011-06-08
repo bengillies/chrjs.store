@@ -437,7 +437,7 @@ tiddlyweb.Store = function() {
 				});
 				removeDeleted(container, result);
 				if (callback) {
-					callback.apply(self, result);
+					callback.apply(self, [result]);
 				}
 			}, function(xhr, err, errMsg) {
 				throw {
@@ -449,7 +449,8 @@ tiddlyweb.Store = function() {
 		}, recipeComplete;
 		recipeComplete = function() {
 			if (self.recipe) {
-				self.refreshTiddlers().unbind('recipe', null, recipeComplete);
+				self.refreshTiddlers(bag, callback).unbind('recipe', null,
+					recipeComplete);
 			}
 		};
 		if (bag && store[bag.name]) {
