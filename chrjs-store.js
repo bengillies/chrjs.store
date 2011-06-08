@@ -428,7 +428,7 @@ tiddlyweb.Store = function() {
 	};
 
 	// refresh tiddlers contained in the recipe. Optional bag parameter will refresh tiddlers specifically in a bag
-	self.refreshTiddlers = function(bag) {
+	self.refreshTiddlers = function(bag, callback) {
 		var getTiddlersSkinny = function(container) {
 			var tiddlerCollection = container.tiddlers();
 			tiddlerCollection.get(function(result) {
@@ -436,6 +436,9 @@ tiddlyweb.Store = function() {
 					replace(tiddler);
 				});
 				removeDeleted(container, result);
+				if (callback) {
+					callback.apply(self, result);
+				}
 			}, function(xhr, err, errMsg) {
 				throw {
 					name: 'RetrieveTiddlersError',
