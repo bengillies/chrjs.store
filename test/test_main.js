@@ -18,6 +18,15 @@ module('chrjs.store', {
 	}
 });
 
+test('remove tiddler', function() {
+	var tiddlers = ts();
+	strictEqual(tiddlers.length, 2, "There should be 2 tiddlers in the store")
+	ts.remove('foo');
+	tiddlers = ts();
+	strictEqual(tiddlers.length, 1, "when foo is removed there should only be one.");
+	strictEqual(tiddlers[0].title, "HelloThere", "make sure HelloThere is the remaining tiddler");
+});
+
 test('Count Tiddlers', function() {
 	var count = 0;
 	ts.each(function(tiddler) {
