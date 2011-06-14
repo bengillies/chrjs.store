@@ -389,57 +389,8 @@ tiddlyweb.Store = function() {
 		return self;
 	};
 
-	// refresh the main recipe (i.e. the one currently being used).
-	self.refreshRecipe = function() {
-		if (self.recipe) {
-			self.recipe.get(function(newRecipe) {
-				self.recipe = newRecipe;
-				$.each(self.recipe.recipe, function(i, bag) {
-					store[bag[0]] = resource(new tiddlyweb.Bag(bag[0], '/'));
-				});
-				self.trigger('recipe', null, self.recipe);
-			}, function(xhr, err, errMsg) {
-				// ignore
-			});
-		} else {
-			self.getSpace(function() {
-				if (self.recipe) {
-					self.refreshRecipe();
-				}
-			});
-		}
-
-		return self;
-	};
-
-	// refresh the bags contained in the recipe. it is likely that some will return 403. This is expected
-	self.refreshBags = function() {
-		var recipeComplete;
-		recipeComplete = function() {
-			if (!$.isEmptyObject(store)) {
-				self.refreshBags();
-			}
-			self.unbind('recipe', null, recipeComplete);
-		};
-		if (!$.isEmptyObject(store)) {
-			$.each(store, function(i, oldBag) {
-				oldBag.thing.get(function(bag) {
-					replace(bag);
-				}, function(xhr, err, errMsg) {
-					// trigger anyway...
-					replace(oldBag.thing);
-				});
-			});
-		} else {
-			self.bind('recipe', null, recipeComplete);
-			self.refreshRecipe();
-		}
-
-		return self;
-	};
-
-	// refresh tiddlers contained in the recipe. Optional bag parameter will refresh tiddlers specifically in a bag
-	self.refreshTiddlers = function(bag, callback) {
+	// refresh tiddlers contained in the recipe.
+	self.refreshTiddlers = function(callback) {
 		var getTiddlersSkinny = function(container) {
 			var tiddlerCollection = container.tiddlers();
 			tiddlerCollection.get(function(result) {
@@ -457,19 +408,16 @@ tiddlyweb.Store = function() {
 						': ' + errMsg
 				};
 			});
-		}, recipeComplete;
-		recipeComplete = function() {
-			if (self.recipe) {
-				self.refreshTiddlers(bag, callback).unbind('recipe', null,
-					recipeComplete);
-			}
 		};
-		if (bag && store[bag.name]) {
-			getTiddlersSkinny(bag);
-		} else if (self.recipe) {
+
+		if (self.recipe) {
 			getTiddlersSkinny(self.recipe);
 		} else {
-			self.bind('recipe', null, recipeComplete).refreshRecipe();
+			self.getSpace(function() {
+				if (self.recipe) {
+					getTiddlersSkinny(self.recipe);
+				}
+			});
 		}
 
 		return self;
