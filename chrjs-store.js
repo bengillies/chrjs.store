@@ -60,6 +60,20 @@ var Tiddlers = function(store, tiddlers) {
 				}
 			});
 		},
+		not: function(name, match) {
+			var chkExists = (!match) ? true : false,
+				getValue = function(tiddler) {
+					return tiddler[name] || (tiddler.fields &&
+						tiddler.fields[name]);
+				};
+			return self.map(function(tiddler) {
+				if (chkExists) {
+					return (getValue(tiddler)) ? null : tiddler;
+				} else {
+					return contains(getValue(tiddler), match) ? null : tiddler;
+				}
+			});
+		},
 		bag: function(name) {
 			return self.map(function(tiddler) {
 				var bag = tiddler.bag && tiddler.bag.name;
