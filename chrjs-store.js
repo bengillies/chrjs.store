@@ -180,8 +180,11 @@ var Tiddlers = function(store, tiddlers) {
 };
 
 
-tiddlyweb.Store = function() {
-	// take in an optional filter and return a Tiddlers object with the tiddlers that match it
+tiddlyweb.Store = function(tiddlerCallback, getCached) {
+	if (getCached === undefined) {
+		getCached = true;
+	}
+
 	var self,
 		// private
 		space = {
@@ -277,6 +280,7 @@ tiddlyweb.Store = function() {
 	};
 
 	// public variables
+	// take in an optional filter and return a Tiddlers object with the tiddlers that match it
 	self = function(name, match) {
 		var allTiddlers = Tiddlers(self);
 
@@ -390,7 +394,7 @@ tiddlyweb.Store = function() {
 	};
 
 	// refresh tiddlers contained in the recipe.
-	self.refreshTiddlers = function(callback) {
+	self.refresh = function(callback) {
 		var getTiddlersSkinny = function(container) {
 			var tiddlerCollection = container.tiddlers();
 			tiddlerCollection.get(function(result) {
@@ -655,6 +659,14 @@ tiddlyweb.Store = function() {
 
 		return self;
 	};
+
+	// initialisation
+	if (getCached) {
+		self.retrieveCached();
+	}
+	if (tiddlerCallback) {
+		self.refresh(tiddlerCallback);
+	}
 
 	return self;
 };
