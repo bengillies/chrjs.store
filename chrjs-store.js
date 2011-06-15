@@ -219,6 +219,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			return obj;
 		},
 		store = {},
+		// remove items from the store that have already been deleted on the server
 		removeDeleted = function(container, tiddlers) {
 			var storeTids, newTiddlers = Tiddlers(self, tiddlers),
 				deleted = [];
