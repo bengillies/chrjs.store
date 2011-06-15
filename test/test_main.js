@@ -1,6 +1,6 @@
 module('chrjs.store', {
 	setup: function() {
-		ts = tiddlyweb.Store();
+		ts = tiddlyweb.Store(null, false); // don't load from localStorage
 		var t = new tiddlyweb.Tiddler('foo');
 		t.text = 'foo bar';
 		t.tags = ['foo', 'bar'];

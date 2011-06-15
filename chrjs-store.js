@@ -14,8 +14,10 @@
 
 (function($) {
 
+var Tiddlers;
+
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
-var Tiddlers = function(store, tiddlers) {
+Tiddlers = function(store, tiddlers) {
 	var self = [];
 	self.store = store;
 	if (tiddlers) {
@@ -408,8 +410,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			}, function(xhr, err, errMsg) {
 				throw {
 					name: 'RetrieveTiddlersError',
-					message: 'Error getting tiddlers from ' + bag.name +
-						': ' + errMsg
+					message: 'Error getting tiddlers: ' + errMsg
 				};
 			});
 		};
