@@ -1,7 +1,7 @@
 dist: distclean
 	mkdir dist
-	cp chrjs-store.js dist/chrjs-store.js
-	uglifyjs -o dist/chrjs-store.min.js chrjs-store.js
+	cp chrjs-store.js dist/chrjs-store-`cat VERSION`.js
+	uglifyjs -o dist/chrjs-store-`cat VERSION`.min.js chrjs-store.js
 
 .PHONY: clean testclean distclean remotes test dist
 
