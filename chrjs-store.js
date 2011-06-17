@@ -159,7 +159,7 @@ Tiddlers = function(store, tiddlers) {
 		// save tiddlers currently in list. Callback happens for each tiddler
 		save: function(callback) {
 			$.each(self, function(i, tiddler) {
-				self.store.saveTiddler(tiddler, callback);
+				self.store.save(tiddler, callback);
 			});
 			return self;
 		},
@@ -167,11 +167,11 @@ Tiddlers = function(store, tiddlers) {
 		add: function(tiddlers) {
 			if (tiddlers instanceof tiddlyweb.Tiddler) {
 				self.push(tiddlers);
-				self.store.addTiddler(tiddlers);
+				self.store.add(tiddlers);
 			} else {
 				$.each(tiddlers, function(i, tiddler) {
 					self.push(tiddler);
-					self.store.addTiddler(tiddlers);
+					self.store.add(tiddlers);
 				});
 			}
 			return self;
@@ -254,7 +254,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		},
 		replace;
 	// add/replace the thing in the store object with the thing passed in.
-	// different to addTiddler, which only adds to pending
+	// different to add, which only adds to pending
 	replace = function(thing) {
 		if (thing instanceof tiddlyweb.Bag) {
 			if (store[thing.name]) {
@@ -467,24 +467,6 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		return self;
 	};
 
-	// return the bag, as with getTiddler
-	self.getBag = function(bagName, callback) {
-		var skinny = (typeof callback === 'undefined') ? true : false,
-			result = null;
-		self.each('bag', function(bag, name) {
-			if (name === bagName) {
-				result = bag;
-				return false;
-			}
-		});
-		if (skinny) {
-			return result;
-		} else {
-			callback(result);
-			return self;
-		}
-	};
-
 	// loops over every thing (tiddler (default) or bag) and calls callback with them
 	self.each = function(thing, cllbck) {
 		var callback = (typeof thing === 'function') ? thing : cllbck,
@@ -523,7 +505,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 	// add a tiddler to the store. Adds to pending (and localStorage).  will add whether a tiddler exists or not. Won't save until save
 	// if bag is not present, will set bag to <space_name> + _public
 	// if tiddler already in store[bag], will remove until saved to server
-	self.addTiddler = function(tiddler) {
+	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
 			var localStorageID;
 			if (window.hasOwnProperty('localStorage')) {
@@ -537,7 +519,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		if (!tiddler.bag) {
 			self.getSpace(function(space) {
 				var bagName = space.name + '_public';
-				tiddler.bag = self.getBag(bagName) ||
+				tiddler.bag = store[bagName] ||
 					new tiddlyweb.Bag(bagName, '/');
 				saveLocal(tiddler);
 				self.trigger('tiddler', null, tiddler);
@@ -552,14 +534,43 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		return self;
 	};
 
-	// save any tiddlers in the pending object back to the server, and remove them from pending
-	self.save = function(callback) {
-		var empty = true;
+	// save any tiddlers in the pending object back to the server, and remove them from pending.
+	// tiddler should be a tiddlyweb.Tiddler to save just that tiddler directly, or a callback to save all tiddlers in pending
+	self.save = function(tiddler, cllbck) {
+		var empty = true, isTiddler = (tiddler instanceof tiddlyweb.Tiddler),
+			callback = (!isTiddler && tiddler) ? tiddler : cllbck,
+			// do the actual saving bit
+			saveTiddler = function(tiddler, callback) {
+				delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
+				tiddler.put(function(response) {
+					if (window.hasOwnProperty('localStorage')) {
+						window.localStorage.removeItem(getStorageID(tiddler));
+					}
+					response = resource(response);
+					replace(response);
+					callback(response);
+				}, function(xhr, err, errMsg) {
+					if (!self.pending[tiddler.title]) {
+						// there was an error, so put it back (if it hasn't already been replaced)
+						self.pending[tiddler.title] = resource(tiddler, true);
+					}
+					callback(null, {
+						name: 'SaveError',
+						message: 'Error saving ' + tiddler.title + ': ' + errMsg
+					});
+				});
+			};
+
+		if (isTiddler) {
+			saveTiddler(tiddler, callback);
+			return self;
+		}
+
 		$.each(self.pending, function(i, tiddler) {
 			if (empty) {
 				empty = false;
 			}
-			self.saveTiddler(tiddler, callback);
+			saveTiddler(tiddler, callback);
 		});
 		if (empty) {
 			callback(null, {
@@ -567,29 +578,6 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 				message: 'Nothing to save'
 			});
 		}
-
-		return self;
-	};
-
-	// save a tiddler from pending directly by name, and remove it
-	self.saveTiddler = function(tiddler, callback) {
-		delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
-		tiddler.put(function(response) {
-			if (window.hasOwnProperty('localStorage')) {
-				window.localStorage.removeItem(getStorageID(tiddler));
-			}
-			response = resource(response);
-			replace(response);
-			callback(response);
-		}, function(xhr, err, errMsg) {
-			if (!self.pending[tiddler.title]) {
-				self.pending[tiddler.title] = resource(tiddler, true);
-			}
-			callback(null, {
-				name: 'SaveError',
-				message: 'Error saving ' + tiddler.title + ': ' + errMsg
-			});
-		});
 
 		return self;
 	};
@@ -655,7 +643,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					tiddler = new tiddlyweb.Tiddler(name);
 				tiddler.bag = new tiddlyweb.Bag(bagName, '/');
 				$.extend(tiddler, tiddlerJSON);
-				self.addTiddler(tiddler, true);
+				self.add(tiddler, true);
 			});
 		}
 
