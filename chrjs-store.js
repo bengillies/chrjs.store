@@ -431,7 +431,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 
 	// returns the tiddler, either directly if no callback, or fresh from the server inside the callback if given
 	// returns pending first, then in recipe order (ie last bag first) if > 1 exist
-	self.getTiddler = function(tiddlerName, callback, render) {
+	self.get = function(tiddlerName, callback, render) {
 		var pending = self.pending[tiddlerName] || null,
 			tiddler = (function() {
 				var tiddler = pending;
@@ -519,7 +519,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		if (!tiddler.bag) {
 			self.getSpace(function(space) {
 				var bagName = space.name + '_public';
-				tiddler.bag = store[bagName].thing ||
+				tiddler.bag = (store[bagName] && store[bagName].thing) ||
 					new tiddlyweb.Bag(bagName, '/');
 				saveLocal(tiddler);
 				self.trigger('tiddler', null, tiddler);
@@ -588,7 +588,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 	// default is don't delete from server, only remove pending
 	self.remove = function(options, cllbck) {
 		var isTiddler = (options instanceof tiddlyweb.Tiddler),
-			tiddler = (typeof options === 'string') ? self.getTiddler(options) :
+			tiddler = (typeof options === 'string') ? self.get(options) :
 				(isTiddler) ? options : options.tiddler || null,
 			callback = cllbck || options.callback || null,
 			del = (!isTiddler && options['delete']) || false,
