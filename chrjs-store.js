@@ -228,7 +228,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			});
 
 			if (container instanceof tiddlyweb.Bag) {
-				storeTids = store[container.name];
+				storeTids = store[container.name].tiddlers;
 				$.each(storeTids, function(title, tiddler) {
 					if (newTiddlers.indexOf(tiddler.title) === -1) {
 						deleted.push([container.name, title]);
@@ -519,7 +519,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		if (!tiddler.bag) {
 			self.getSpace(function(space) {
 				var bagName = space.name + '_public';
-				tiddler.bag = store[bagName] ||
+				tiddler.bag = store[bagName].thing ||
 					new tiddlyweb.Bag(bagName, '/');
 				saveLocal(tiddler);
 				self.trigger('tiddler', null, tiddler);
