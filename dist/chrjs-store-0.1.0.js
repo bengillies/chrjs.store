@@ -435,9 +435,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		var pending = self.pending[tiddlerName] || null,
 			tiddler = (function() {
 				var tiddler = pending;
-				if (tiddlerName instanceof tiddlyweb.Tiddler) {
-					return tiddlerName;
-				} else if (tiddler) {
+				if (tiddler) {
 					return tiddler;
 				}
 				self.each(function(tid, title) {
@@ -594,8 +592,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 				(isTiddler) ? options : options.tiddler || null,
 			callback = cllbck || options.callback || null,
 			del = (!isTiddler && options['delete']) || false,
-			pending = (!isTiddler && options.pending !== undefined) ?
-				options.pending : true,
+			pending = (!isTiddler && options.pending) || true,
 			removeLocal = function(tiddler, pending, synced) {
 				var bagName = tiddler.bag.name;
 				if (pending) {
