@@ -73,3 +73,18 @@ test('Retrieve tiddler (from server)', function() {
 		strictEqual(tiddler.text, 'Hello World', 'check the text was found as it was on the "server"');
 	});
 });
+
+test('Retrieve tiddler from server, save locally, get locally', function() {
+	var tid = new tiddlyweb.Tiddler("TidOnServer");
+	tid.bag = new tiddlyweb.Bag("foo", "/")
+	ts.get(tid, function(tiddler) {
+		strictEqual(tiddler.text, 'Hello World', 'check the text was found as it was on the "server"');
+		tiddler.text = "bar";
+		ts.add(tiddler);
+		var newtid = new tiddlyweb.Tiddler("TidOnServer");
+		newtid.bag = new tiddlyweb.Bag("foo", "/")
+		ts.get(newtid, function(tid2) {
+			strictEqual(tid2.text, 'bar', 'make sure we get the local version as this tiddler exists in localStorage');
+		})
+	});
+});
