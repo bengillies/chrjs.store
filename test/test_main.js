@@ -59,7 +59,7 @@ test('Save Tiddlers', function() {
 });
 
 test('Retrieve tiddler (from cache)', function() {
-	ts.getTiddler('HelloThere', function(tiddler) {
+	ts.get('HelloThere', function(tiddler) {
 		strictEqual(tiddler.text, 'Hello World, from the Test Suite', 'test correct text is on tiddler');
 	});
 });
