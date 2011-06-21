@@ -57,3 +57,19 @@ test('Save Tiddlers', function() {
 	});
 	strictEqual(count, 0);
 });
+
+test('Retrieve tiddler (from cache)', function() {
+	ts.get('HelloThere', function(tiddler) {
+		strictEqual(tiddler.text, 'Hello World, from the Test Suite', 'test correct text is on tiddler');
+	});
+});
+
+test('Retrieve tiddler (from server)', function() {
+	// this tiddler is not in the local store
+	var tid = new tiddlyweb.Tiddler("TidOnServer");
+	tid.bag = new tiddlyweb.Bag("foo", "/")
+	ts.get(tid, function(tiddler) {
+		strictEqual(tiddler.title, 'TidOnServer', 'check a tiddler object has been found with correct title');
+		strictEqual(tiddler.text, 'Hello World', 'check the text was found as it was on the "server"');
+	});
+});
