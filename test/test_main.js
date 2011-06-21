@@ -48,3 +48,10 @@ test('Save Tiddlers', function() {
 	});
 	strictEqual(count, 0);
 });
+
+test('Retrieve tiddler (from cache)', function() {
+	ts.getTiddler('HelloThere', function(tiddler) {
+		strictEqual(tiddler.text, 'Hello World, from the Test Suite', 'test correct text is on tiddler');
+	});
+});
+
