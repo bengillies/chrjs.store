@@ -588,47 +588,45 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 	// callback is optional. options can be a tiddler object, a string with the title, or an object with the following:
 	// tiddler, delete (bool, delete from server), callback, pending (bool, delete pending only)
 	// default is don't delete from server, only remove pending
-	self.remove = function(options, cllbck) {
-		var isTiddler = (options instanceof tiddlyweb.Tiddler),
-			tiddler = (typeof options === 'string') ? self.get(options) :
-				(isTiddler) ? options : options.tiddler || null,
-			callback = cllbck || options.callback || null,
-			del = (!isTiddler && options['delete']) || false,
-			pending = (!isTiddler && options.pending !== undefined) ?
-				options.pending : true,
-			removeLocal = function(tiddler, pending, synced) {
-				var bagName = tiddler.bag.name;
-				if (pending) {
-					delete self.pending[tiddler.title];
-				}
-				if (synced) {
-					bagName = tiddler.bag.name;
-					delete store[bagName].tiddlers[tiddler.title];
-				}
-				if (callback) {
-					callback(tiddler);
-				}
-			};
+	self.remove = function(tid, cllbck) {
+		var options = {
+			pending: true,
+			server: false,
+			tiddler: tid,
+			callback: cllbck || function() {}
+		};
 
-		if (!tiddler) {
-			return self;
+		if (typeof tid === 'string') {
+			options.tiddler = self.get(tid);
+		} else if (!(tid instanceof tiddlyweb.Tiddler)) {
+			$.extend(options, tid);
 		}
-		if (del) {
-			tiddler['delete'](function() {
-				removeLocal(tiddler, true, true);
-			}, function(xhr, err, errMsg) {
-				if (callback) {
-					callback(null, {
-						name: 'DeleteError',
-						message: 'Error deleting ' + tiddler.title + ': '
-							+ errMsg
-					});
-				}
-			});
-		} else if (pending) {
-			removeLocal(tiddler, true, false);
+
+		if (!options.tiddler) {
+			return self;
 		} else {
-			removeLocal(tiddler, false, true);
+			if (options.pending) {
+				delete self.pending[options.tiddler.title];
+				if (window.hasOwnProperty('localStorage')) {
+					window.localStorage.removeItem(getStorageID(options.tiddler));
+				}
+			}
+			if (options.server) {
+				options.tiddler['delete'](function(tiddler) {
+					if (store[tiddler.bag.name]) {
+						delete store[tiddler.bag.name].tiddlers[tiddler.title];
+					}
+					options.callback(tiddler);
+				}, function(xhr, err, errMsg) {
+					options.callback(null, {
+						name: 'DeleteError',
+						message: 'Error deleting ' + options.tiddler.title +
+							': ' + errMsg
+					}, xhr);
+				});
+			} else {
+				options.callback(options.tiddler);
+			}
 		}
 
 		return self;
