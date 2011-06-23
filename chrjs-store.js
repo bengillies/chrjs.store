@@ -14,6 +14,13 @@
 
 (function($) {
 
+var localStorageSupport;
+try {
+	localStorageSupport = 'localStorage' in window && window['localStorage'] !== null;
+} catch(e) {
+	localStorageSupport = false;
+}
+
 var Tiddlers;
 
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
@@ -510,7 +517,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
 			var localStorageID;
-			if (window.hasOwnProperty('localStorage')) {
+			if (localStorageSupport) {
 				localStorageID = getStorageID(tiddler);
 				window.localStorage.setItem(localStorageID,
 					tiddler.toJSON());
@@ -545,7 +552,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			saveTiddler = function(tiddler, callback) {
 				delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
 				tiddler.put(function(response) {
-					if (window.hasOwnProperty('localStorage')) {
+					if (localStorageSupport) {
 						window.localStorage.removeItem(getStorageID(tiddler));
 					}
 					response = resource(response);
@@ -607,7 +614,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		} else {
 			if (options.pending) {
 				delete self.pending[options.tiddler.title];
-				if (window.hasOwnProperty('localStorage')) {
+				if (localStorageSupport) {
 					window.localStorage.removeItem(getStorageID(options.tiddler));
 				}
 			}
@@ -634,7 +641,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 
 	// import pending from localStorage
 	self.retrieveCached = function() {
-		if (window.hasOwnProperty('localStorage')) {
+		if (localStorageSupport) {
 			$.each(window.localStorage, function(i) {
 				var key = window.localStorage.key(i),
 					names = key.split('/'),
