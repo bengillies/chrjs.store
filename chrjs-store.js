@@ -439,6 +439,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 
 	// returns the tiddler, either directly if no callback, or fresh from the server inside the callback if given
 	// returns pending first, then in recipe order (ie last bag first) if > 1 exist
+	// render sets the render=1 flag on the GET request, server forces the function to return the server version
 	self.get = function(tid, callback, render, server) {
 		var pending = self.pending[tid] || self.pending[tid.title] || null,
 			tiddler = (function() {
@@ -595,8 +596,8 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 	};
 
 	// remove a tiddler, either locally from pending, from the store, or delete from the server.
-	// callback is optional. options can be a tiddler object, a string with the title, or an object with the following:
-	// tiddler, delete (bool, delete from server), callback, pending (bool, delete pending only)
+	// cllbck is optional. tid can be a tiddler object, a string with the title, or an object with the following:
+	// tiddler, server (bool, delete from server), callback, pending (bool, delete pending)
 	// default is don't delete from server, only remove pending
 	self.remove = function(tid, cllbck) {
 		var options = {
