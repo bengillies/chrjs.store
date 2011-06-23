@@ -463,7 +463,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 		} else if (tiddler) {
 			tiddler.get(function(t) {
 				replace(t);
-				callback.call(self, tiddler);
+				callback.call(self, t);
 			}, function(xhr, err, errMsg) {
 				callback.call(self, null, {
 					name: 'RetrieveTiddlersError',
