@@ -16,7 +16,8 @@
 
 var localStorageSupport;
 try {
-	localStorageSupport = 'localStorage' in window && window['localStorage'] !== null;
+	localStorageSupport = 'localStorage' in window &&
+		window['localStorage'] !== null;
 } catch(e) {
 	localStorageSupport = false;
 }
@@ -336,7 +337,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					}
 				},
 				error: function(xhr, txtStatus, err) {
-					callback(null, err);
+					callback(null, err, xhr);
 				}
 			});
 		}
@@ -416,10 +417,10 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					callback.apply(self, [result]);
 				}
 			}, function(xhr, err, errMsg) {
-				throw {
+				callback(null, {
 					name: 'RetrieveTiddlersError',
 					message: 'Error getting tiddlers: ' + errMsg
-				};
+				}, xhr);
 			});
 		};
 
@@ -568,7 +569,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					callback(null, {
 						name: 'SaveError',
 						message: 'Error saving ' + tiddler.title + ': ' + errMsg
-					});
+					}, xhr);
 				});
 			};
 
