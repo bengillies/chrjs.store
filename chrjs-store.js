@@ -438,41 +438,43 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 
 	// returns the tiddler, either directly if no callback, or fresh from the server inside the callback if given
 	// returns pending first, then in recipe order (ie last bag first) if > 1 exist
-	self.get = function(tiddlerName, callback, render) {
-		var pending = self.pending[tiddlerName] || null,
+	self.get = function(tid, callback, render, server) {
+		var pending = self.pending[tid] || self.pending[tid.title] || null,
 			tiddler = (function() {
-				var tiddler = pending;
-				if (tiddlerName instanceof tiddlyweb.Tiddler) {
-					return tiddlerName;
-				} else if (tiddler) {
+				var tiddler = (!server && pending) ? pending : tid;
+				if (tiddler instanceof tiddlyweb.Tiddler) {
 					return tiddler;
 				}
-				self.each(function(tid, title) {
-					if (title === tiddlerName) {
-						tiddler = tid;
+				self.each(function(t, title) {
+					if (title === tiddler) {
+						tiddler = t;
 						return false;
 					}
 				});
 				return tiddler;
-			}()),
-			skinny = (typeof(callback) === 'function') ? false : true;
-		if (skinny) {
+			}());
+
+		if (!callback) {
 			return tiddler;
-		} else if (pending) {
-			callback(pending);
+		} else if (!server && pending) {
+			callback.call(self, tiddler);
 		} else if (tiddler) {
-			tiddler.get(function(tid) {
-				replace(tid);
-				callback(tid);
+			tiddler.get(function(t) {
+				replace(t);
+				callback.call(self, tiddler);
 			}, function(xhr, err, errMsg) {
-				callback(null, {
+				callback.call(self, null, {
 					name: 'RetrieveTiddlersError',
 					message: 'Error getting tiddler: ' + errMsg
-				});
+				}, xhr);
 			}, (render) ? 'render=1' : '');
 		} else {
-			callback(null);
+			callback.call(null, {
+				name: 'NotFoundError',
+				message: 'Tiddler not found'
+			});
 		}
+
 		return self;
 	};
 
