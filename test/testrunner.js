@@ -46,6 +46,9 @@ var extractResults = function($el) {
 
 			console.log('Module: ' + moduleName + ', Test: ' + testName +
 				', Failed: ' + countFailed);
+			$module.find('.fail .test-message').each(function(i, el) {
+				console.log('\t-> ' + el.innerText);
+			});
 		});
 	}
 
