@@ -67,7 +67,9 @@ test('Save Tiddlers', function() {
 test('Retrieve tiddler (from cache)', function() {
 	ts.get('HelloThere', function(tiddler) {
 		strictEqual(tiddler.text, 'Hello World, from the Test Suite', 'test correct text is on tiddler');
+		strictEqual((tiddler instanceof tiddlyweb.Tiddler), true, 'test the thing returned is a tiddler');
 	});
+	strictEqual((ts()[0] instanceof tiddlyweb.Tiddler), true, 'test the store function returns tiddlers');
 });
 
 test('Retrieve tiddler (from server)', function() {

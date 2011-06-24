@@ -304,7 +304,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 
 		// create new copies so any modifications do not affect the original
 		allTiddlers = allTiddlers.map(function(tiddler) {
-			return $.extend(true, {}, tiddler);
+			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
 		});
 
 		return allTiddlers;
@@ -459,13 +459,14 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			}());
 
 		if (!callback) {
-			return $.extend(true, {}, tiddler);
+			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
 		} else if (!server && pending) {
-			callback.call(self, $.extend(true, {}, tiddler));
+			callback.call(self, $.extend(true, new tiddlyweb.Tiddler(),
+				tiddler));
 		} else if (tiddler) {
 			tiddler.get(function(t) {
 				replace(t);
-				callback.call(self, $.extend(true, {}, t));
+				callback.call(self, $.extend(true, new tiddlyweb.Tiddler(), t));
 			}, function(xhr, err, errMsg) {
 				callback.call(self, null, {
 					name: 'RetrieveTiddlersError',
