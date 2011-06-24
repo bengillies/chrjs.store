@@ -305,6 +305,11 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			allTiddlers = allTiddlers.attr(name, match);
 		}
 
+		// create new copies so any modifications do not affect the original
+		allTiddlers = allTiddlers.map(function(tiddler) {
+			return $.extend(true, {}, tiddler);
+		});
+
 		return allTiddlers;
 	};
 	self.recipe = null;
@@ -457,13 +462,13 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			}());
 
 		if (!callback) {
-			return tiddler;
+			return $.extend(true, {}, tiddler);
 		} else if (!server && pending) {
-			callback.call(self, tiddler);
+			callback.call(self, $.extend(true, {}, tiddler));
 		} else if (tiddler) {
 			tiddler.get(function(t) {
 				replace(t);
-				callback.call(self, t);
+				callback.call(self, $.extend(true, {}, t));
 			}, function(xhr, err, errMsg) {
 				callback.call(self, null, {
 					name: 'RetrieveTiddlersError',
