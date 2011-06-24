@@ -631,10 +631,11 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					self.trigger('tiddler', tiddler.title, [tiddler, 'deleted']);
 					options.callback(tiddler);
 				}, function(xhr, err, errMsg) {
-					options.callback(null, {
-						name: 'DeleteError',
-						message: 'Error deleting ' + options.tiddler.title +
-							': ' + errMsg
+					options.callback((options.pending) ? options.tiddler : null,
+						{
+							name: 'DeleteError',
+							message: 'Error deleting ' + options.tiddler.title +
+								': ' + errMsg
 					}, xhr);
 				});
 			} else {
