@@ -88,3 +88,37 @@ test('Retrieve tiddler from server, save locally, get locally', function() {
 		})
 	});
 });
+
+
+module('empty chrjs.store', {
+	setup: function() {
+		ts = tiddlyweb.Store(null, false); // don't load from localStorage
+		localStorage.clear();
+	},
+	teardown: function() {
+		ts = undefined;
+		localStorage.clear();
+	}
+});
+
+test('dirty', function() {
+	strictEqual(ts().dirty().length, 0, "At the start no tiddlers should be dirty.");
+	ts.retrieveCached();
+	strictEqual(ts().dirty().length, 0, "No tiddlers in local storage so should remain at 0.");
+	var tid = new tiddlyweb.Tiddler("TidOnServer");
+	tid.bag = new tiddlyweb.Bag("foo", "/")
+
+	// get the tiddler from the server (it should exist on the server)
+	ts.get(tid, function(t) {
+		tid = t;
+	});
+	strictEqual(ts().dirty().length, 0, "This tiddler has not been added to the store so we should still be at 0.");
+	// change the text of the tiddler;
+	tid.text = "bar";
+
+	// add the tiddler back to the store
+	ts.add(tid);
+	strictEqual(ts().dirty().length, 1, "Adding a single tiddler should put one tiddler in the store.");
+	ts.add(tid);
+	strictEqual(ts().dirty().length, 1, "Adding same tiddler should keep one tiddler in the store.");
+});
