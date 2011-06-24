@@ -256,7 +256,6 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 				var title = toDelete[1], bag = toDelete[0],
 					tiddler = store[bag].tiddlers[title];
 				delete store[bag].tiddlers[title];
-				self.trigger('tiddler', null, [tiddler, 'deleted']);
 				self.trigger('tiddler', title, [tiddler, 'deleted']);
 			});
 		},
@@ -270,7 +269,6 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 			} else {
 				store[thing.name] = resource(thing);
 			}
-			self.trigger('bag', null, thing);
 			self.trigger('bag', thing.name, thing);
 			return true;
 		} else {
@@ -283,7 +281,6 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					oldBag.tiddlers[thing.title].revision;
 			store[bagName].tiddlers[thing.title] = resource(thing);
 			if (thing.revision !== oldRevision) {
-				self.trigger('tiddler', null, thing);
 				self.trigger('tiddler', thing.title, thing);
 			}
 			return true;
@@ -540,12 +537,10 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 				tiddler.bag = (store[bagName] && store[bagName].thing) ||
 					new tiddlyweb.Bag(bagName, '/');
 				saveLocal(tiddler);
-				self.trigger('tiddler', null, tiddler);
 				self.trigger('tiddler', tiddler.title, tiddler);
 			});
 		} else {
 			saveLocal(tiddler);
-			self.trigger('tiddler', null, tiddler);
 			self.trigger('tiddler', tiddler.title, tiddler);
 		}
 
@@ -632,6 +627,7 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					if (store[tiddler.bag.name]) {
 						delete store[tiddler.bag.name].tiddlers[tiddler.title];
 					}
+					self.trigger('tiddler', tiddler.title, [tiddler, 'deleted']);
 					options.callback(tiddler);
 				}, function(xhr, err, errMsg) {
 					options.callback(null, {
@@ -641,6 +637,8 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 					}, xhr);
 				});
 			} else {
+				self.trigger('tiddler', options.tiddler.title, [options.tiddler,
+					'deleted']);
 				options.callback(options.tiddler);
 			}
 		}

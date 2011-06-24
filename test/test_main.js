@@ -43,6 +43,12 @@ test('Add Tiddlers', function() {
 	strictEqual(addedTid.text, 'A New Tiddler');
 	equal(addedTid.lastSync, undefined);
 	strictEqual(addedTid.bag.name, 'foo_public');
+
+	var tid2 = new tiddlyweb.Tiddler('Baz');
+	tid2.text = 'foo';
+	tid2.bag = new tiddlyweb.Bag('a-bag', '/');
+	var addedTid2 = ts.add(tid2).get('Baz');
+	strictEqual(addedTid2.bag.name, 'a-bag', 'The bag should not change');
 });
 
 test('Save Tiddlers', function() {
@@ -87,6 +93,40 @@ test('Retrieve tiddler from server, save locally, get locally', function() {
 			strictEqual(tid2.text, 'bar', 'make sure we get the local version as this tiddler exists in localStorage');
 		})
 	});
+});
+
+test('get space', function() {
+	ts.getSpace(function(space) {
+		strictEqual(space.name, 'foo');
+		strictEqual(space.type, 'public');
+	});
+});
+
+test('bind, unbind', function() {
+	var tid = new tiddlyweb.Tiddler('Notify Me'),
+		removed = false,
+		called = 0,
+		bindFunc = function(tiddler, deleted) {
+			strictEqual(tiddler.title, 'Notify Me', 'We should get notified when adding');
+			if (removed) {
+				strictEqual(deleted, 'deleted', 'We should still be notified, but it should say deleted');
+			}
+			called++;
+		};
+
+	ts.bind('tiddler', null, function(tiddler) {
+		strictEqual(tiddler.title, 'Notify Me', 'bind to all tiddlers');
+		called++;
+	}).bind('tiddler', 'Notify Me', bindFunc);
+
+	ts.add(tid);
+	strictEqual(called, 2, 'we should have been notified twice');
+	console.log('after ' + called);
+	ts.remove(tid);
+	strictEqual(called, 4, 'check delete notifications');
+	ts.unbind('tiddler', 'Notify Me', bindFunc);
+	ts.add(tid);
+	strictEqual(called, 5, 'make sure unbind worked');
 });
 
 
