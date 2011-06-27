@@ -523,14 +523,16 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 	// if tiddler already in store[bag], will remove until saved to server
 	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
-			var localStorageID;
+			var localStorageID, tid;
 			if (localStorageSupport) {
 				localStorageID = getStorageID(tiddler);
 				window.localStorage.setItem(localStorageID,
 					tiddler.toJSON());
 			}
+			tid = $.extend( true, new tiddlyweb.Tiddler(), tiddler);
+			self.pending[tid.title] = resource(tid, true);
+			self.trigger('tiddler', tid.title, tid);
 		};
-		self.pending[tiddler.title] = resource(tiddler, true);
 
 		if (!tiddler.bag) {
 			self.getSpace(function(space) {
@@ -538,11 +540,9 @@ tiddlyweb.Store = function(tiddlerCallback, getCached) {
 				tiddler.bag = (store[bagName] && store[bagName].thing) ||
 					new tiddlyweb.Bag(bagName, '/');
 				saveLocal(tiddler);
-				self.trigger('tiddler', tiddler.title, tiddler);
 			});
 		} else {
 			saveLocal(tiddler);
-			self.trigger('tiddler', tiddler.title, tiddler);
 		}
 
 		return self;
