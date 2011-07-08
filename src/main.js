@@ -1,5 +1,9 @@
-require('store', function(store) {
+(function() {
+
+require(['store'], function(store) {
 
 	tiddlyweb.Store = store;
 
 });
+
+}());

@@ -1,6 +1,6 @@
-define('store', ['filter', 'event', 'cache'], function(filter, events, cache) {
+define(['filter', 'event', 'cache'], function(filter, events, cache) {
 
-tiddlyweb.Store = function(tiddlerCallback, getCached) {
+return function(tiddlerCallback, getCached) {
 	if (getCached === undefined) {
 		getCached = true;
 	}
