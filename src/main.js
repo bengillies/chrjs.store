@@ -1,4 +1,4 @@
-(function() {
+(function(tiddlyweb) {
 
 require(['store'], function(store) {
 
@@ -6,4 +6,4 @@ require(['store'], function(store) {
 
 });
 
-}());
+}(window.tiddlyweb));
