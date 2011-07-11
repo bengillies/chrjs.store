@@ -732,7 +732,7 @@ return function(tiddlerCallback, getCached) {
 };
 
 });
-(function() {
+(function(tiddlyweb) {
 
 require(['store'], function(store) {
 
@@ -740,5 +740,5 @@ require(['store'], function(store) {
 
 });
 
-}());
+}(window.tiddlyweb));
 define("main.js", function(){});
