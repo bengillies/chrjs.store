@@ -123,7 +123,6 @@ test('bind, unbind', function() {
 
 	ts.add(tid);
 	strictEqual(called, 2, 'we should have been notified twice');
-	console.log('after ' + called);
 	ts.remove(tid);
 	strictEqual(called, 4, 'check delete notifications');
 	ts.unbind('tiddler', 'Notify Me', bindFunc);
