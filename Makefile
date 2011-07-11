@@ -1,12 +1,17 @@
-dist: lib/requirejs
-	cd src && ../lib/requirejs/build/build.sh name=store.js \
-		out=../chrjs-store-`cat VERSION`.js baseUrl=. optimize=none
-	cd src && ../lib/requirejs/build/build.sh name=store.js \
-		out=../chrjs-store-latest.js baseUrl=. optimize=none
-	cd src && ../lib/requirejs/build/build.sh name=store.js \
-		out=../chrjs-store-`cat VERSION`.js baseUrl=.
+# arg is file to write to
+build = cd src && ../lib/requirejs/build/build.sh name=main.js \
+	out=$(1) baseUrl=. optimize=none && cd ..
 
-#../requirejs/build/build.sh name=main.js out=foo.js baseUrl=. optimize=none
+# arg1 is version number arg2 is str to append to filename after version
+apply_copyright = sed 's/\#{VERSION}/$(1)/g' COPYRIGHT > \
+	dist/chrjs-store-$(1)$(2).js && \
+	cat chrjs-store.js >> dist/chrjs-store-$(1)$(2).js
+
+dist: lib/requirejs dev
+	$(call apply_copyright,$(shell cat VERSION))
+	uglifyjs -o dist/chrjs-store-`cat VERSION`.min.js \
+		dist/chrjs-store-`cat VERSION`.js
+	cp dist/chrjs-store-`cat VERSION`.js dist/chrjs-store-latest.js
 
 lib/requirejs:
 	curl -o lib/requirejs.zip \
@@ -40,8 +45,7 @@ remotes: testclean
 		http://requirejs.org/docs/release/0.24.0/minified/require.js
 
 dev: lib/requirejs
-	cd src && ../lib/requirejs/build/build.sh name=store.js \
-		out=../chrjs-store.js baseUrl=. optimize=none
+	 $(call build,../chrjs-store.js)
 
-test: dev
+test:
 	phantomjs test/testrunner.js file://`pwd`/test/index.html
