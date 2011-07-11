@@ -1,0 +1,13 @@
+/* Chrjs-Store
+ * A modular store for TiddlySpace
+ *
+ * See https://github.com/bengillies/chrjs.store for more
+ *
+ * Dependencies: chrjs library, jQuery, TiddlySpace, RequireJS
+ *
+ * Version: #{VERSION}
+ *
+ * created by Ben Gillies
+ * Chrjs-Store is distributed under a BSD License
+ */
+
