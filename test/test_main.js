@@ -1,3 +1,19 @@
+module('run');
+
+test('ensure chrjs-store loaded', function() {
+	if (tiddlyweb.Store === undefined) {
+		stop();
+		var timer = setInterval(function() {
+			if (tiddlyweb.Store !== undefined) {
+				start();
+				ok(true, 'Chrjs-Store successfully loaded');
+			}
+		}, 50);
+	} else {
+		ok(true, 'Chrjs-Store successfully loaded');
+	}
+});
+
 module('chrjs.store', {
 	setup: function() {
 		ts = tiddlyweb.Store(null, false); // don't load from localStorage
