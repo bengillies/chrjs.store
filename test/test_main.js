@@ -1,19 +1,3 @@
-module('run');
-
-test('ensure chrjs-store loaded', function() {
-	if (tiddlyweb.Store === undefined) {
-		stop();
-		var timer = setInterval(function() {
-			if (tiddlyweb.Store !== undefined) {
-				start();
-				ok(true, 'Chrjs-Store successfully loaded');
-			}
-		}, 50);
-	} else {
-		ok(true, 'Chrjs-Store successfully loaded');
-	}
-});
-
 module('chrjs.store', {
 	setup: function() {
 		ts = tiddlyweb.Store(null, false); // don't load from localStorage
@@ -184,8 +168,8 @@ module('localStorage used for non store things', {
 	setup: function() {
 		ts = tiddlyweb.Store(null, false); // don't load from localStorage
 		localStorage.clear();
-		localStorage.setItem("bag/tiddler", "{'title':'foo', 'text':'bar', 'text':'', 'fields':{}}");
-		localStorage.setItem("tiddler", "{'title':'tiddler', 'text':'bar', 'text':'', 'fields':{}}");
+		localStorage.setItem("bag/tiddler", '{"title":"foo", "text":"bar", "text":"", "fields":{}}');
+		localStorage.setItem("tiddler", '{"title":"tiddler", "text":"bar", "text":"", "fields":{}}');
 		localStorage.setItem("bar/bar", "a string");
 		localStorage.setItem("bar", "a string with no concept of bag");
 	},
@@ -198,5 +182,5 @@ module('localStorage used for non store things', {
 test("test resilience to alternative local storage", function() {
 	ts = tiddlyweb.Store(null, false); // don't load from localStorage
 	ts.retrieveCached();
-	strictEqual(ts().length, 2, "only one tiddler was in the correct format (bag/tiddler)");
+	strictEqual(ts().length, 1, "only one tiddler was in the correct format (bag/tiddler)");
 });

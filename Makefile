@@ -47,5 +47,5 @@ remotes: testclean
 dev: lib/requirejs
 	 $(call build,../chrjs-store.js)
 
-test:
+test: dev
 	phantomjs test/testrunner.js file://`pwd`/test/index.html

@@ -404,7 +404,7 @@ return function(tiddlerCallback, getCached) {
 	// import pending from localStorage
 	self.retrieveCached = function() {
 		$.each(cache.list(), function(i, tiddler) {
-			store.add(tiddler);
+			self.add(tiddler);
 		});
 
 		return self;

@@ -44,12 +44,16 @@ return {
 		if (isLocalStorage) {
 			$.each(window.localStorage, function(i) {
 				try {
-					var key = window.localStorage.key(i),
-						names = key.split('/'),
-						bagName = decodeURIComponent(names[0]),
-						name = decodeURIComponent(names[1]),
-						tiddlerJSON = $.parseJSON(window.localStorage[key]),
-						tiddler = new tiddlyweb.Tiddler(name);
+					var key = window.localStorage.key(i), names, bagName, name,
+						tiddlerJSON, tiddler;
+					names = key.split('/');
+					if (names.length !== 2) {
+						throw "BadKey";
+					}
+					bagName = decodeURIComponent(names[0]);
+					name = decodeURIComponent(names[1]);
+					tiddlerJSON = $.parseJSON(window.localStorage[key]);
+					tiddler = new tiddlyweb.Tiddler(name);
 					tiddler.bag = new tiddlyweb.Bag(bagName, '/');
 					$.extend(tiddler, tiddlerJSON);
 					tiddlers.push(tiddler);
