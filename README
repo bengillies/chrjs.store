@@ -15,4 +15,6 @@ very incomplete (no support for DELETE, etc).
 
 Dependencies: chrjs, jQuery, TiddlySpace.
 
+See http://chrjs-store.tiddlyspace.com for documentation and examples
+
 Written by Ben Gillies
