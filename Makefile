@@ -1,6 +1,9 @@
 # arg is file to write to
 build = cd src && ../lib/requirejs/build/build.sh name=main.js \
-	out=$(1) baseUrl=. optimize=none && cd ..
+	out=../$(1) baseUrl=. optimize=none && cd .. && \
+	cat build/mini_require.js > $(1).tmp && \
+	cat $(1) | sed '$$d' >> $(1).tmp && \
+	mv $(1).tmp $(1)
 
 # arg1 is version number arg2 is str to append to filename after version
 apply_copyright = sed 's/\#{VERSION}/$(1)/g' COPYRIGHT > \
@@ -45,7 +48,7 @@ remotes: testclean
 		http://requirejs.org/docs/release/0.24.0/minified/require.js
 
 dev: lib/requirejs
-	 $(call build,../chrjs-store.js)
+	 $(call build,chrjs-store.js)
 
 test: dev
 	phantomjs test/testrunner.js file://`pwd`/test/index.html
