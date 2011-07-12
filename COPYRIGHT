@@ -3,7 +3,7 @@
  *
  * See https://github.com/bengillies/chrjs.store for more
  *
- * Dependencies: chrjs library, jQuery, TiddlySpace, RequireJS
+ * Dependencies: chrjs library, jQuery, TiddlySpace
  *
  * Version: #{VERSION}
  *
