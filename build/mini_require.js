@@ -69,7 +69,12 @@ var _define = function(module, deps, payload) {
         payload = deps;
 
     if (!define.modules)
-        define.modules = {};
+        define.modules = {
+            require: { payload: window.require, deps: [] },
+            define: { payload: window.define, deps: [] },
+            exports: { payload: {}, deps: [] },
+            module: { payload: {}, deps: [] }
+        };
 
     define.modules[module] = {
         payload: payload,

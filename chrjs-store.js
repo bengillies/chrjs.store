@@ -69,7 +69,12 @@ var _define = function(module, deps, payload) {
         payload = deps;
 
     if (!define.modules)
-        define.modules = {};
+        define.modules = {
+            require: { payload: window.require, deps: [] },
+            define: { payload: window.define, deps: [] },
+            exports: { payload: {}, deps: [] },
+            module: { payload: {}, deps: [] }
+        };
 
     define.modules[module] = {
         payload: payload,
@@ -587,10 +592,10 @@ return function(tiddlerCallback, getCached) {
 	self.recipe = null;
 	self.pending = {};
 
+	// public functions
+
 	// let filter be extensible
 	self.fn = filter.fn;
-
-	// public functions
 
 	// takes in a  callback. calls callback with space object containing name and type or error
 	self.getSpace = function(callback) {
