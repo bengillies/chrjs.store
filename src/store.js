@@ -116,6 +116,9 @@ return function(tiddlerCallback, getCached) {
 
 	// public functions
 
+	// let filter be extensible
+	self.fn = filter.fn;
+
 	// takes in a  callback. calls callback with space object containing name and type or error
 	self.getSpace = function(callback) {
 		if (space.name !== '') {
