@@ -44,8 +44,6 @@ remotes: testclean
 		http://jquery-json.googlecode.com/files/jquery.json-2.2.js
 	curl -o test/lib/chrjs.js \
 		https://raw.github.com/tiddlyweb/chrjs/master/main.js
-	curl -o test/lib/require.js \
-		http://requirejs.org/docs/release/0.24.0/minified/require.js
 
 dev: lib/requirejs
 	 $(call build,chrjs-store.js)
