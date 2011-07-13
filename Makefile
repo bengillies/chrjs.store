@@ -24,7 +24,7 @@ lib/requirejs:
 
 .PHONY: clean testclean distclean remotes test dist dev
 
-clean: testclean distclean
+clean: testclean
 
 testclean:
 	rm -r test/lib || true
