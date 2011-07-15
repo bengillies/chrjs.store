@@ -5,24 +5,36 @@ var states = {
 		match: /^\[\[[^\]\]]+\]\]/,
 		action: function(text) {
 			return text.slice(2).split(/\]\](.*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (tiddler.title === value) ? true : false;
 		}
 	},
 	notTitle: {
 		match: /^!\[\[[^\]\]]+\]\]/,
 		action: function(text) {
 			return text.slice(3).split(/\]\](.*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (tiddler.title !== value) ? true : false;
 		}
 	},
 	tag: {
 		match: /^#.+/,
 		action: function(text) {
 			return text.slice(1).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (~tiddler.tags.indexOf(value)) ? true : false;
 		}
 	},
 	notTag: {
 		match: /^!#.+/,
 		action: function(text) {
 			return text.slice(2).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (!~tiddler.tags.indexOf(value)) ? true : false;
 		}
 	},
 	field: {
@@ -39,6 +51,10 @@ var states = {
 				value: value
 			};
 			return [match, rest];
+		},
+		tiddlerTest: function(tiddler) {
+			return (tiddler.fields[value.field] && tiddler.fields[value.field]
+				=== value.value) ? true : false;
 		}
 	},
 	notField: {
@@ -55,30 +71,48 @@ var states = {
 				value: value
 			};
 			return [match, rest];
+		},
+		tiddlerTest: function(tiddler) {
+			return (tiddler.fields[value.field] && tiddler.fields[value.field]
+				!== value.value) ? true : false;
 		}
 	},
 	space: {
 		match: /^@.+/,
 		action: function(text) {
 			return text.slice(1).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (tiddler.bag.name.split(/_(public|private)$/)[0] === value) ?
+				true : false;
 		}
 	},
 	notSpace: {
 		match: /^!@.+/,
 		action: function(text) {
 			return text.slice(2).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (tiddler.bag.name.split(/_(public|private)$/)[0] !== value) ?
+				true : false;
 		}
 	},
 	text: {
 		match: /^[^!\W,]/,
 		action: function(text) {
 			return text.split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (~tiddler.text.indexOfi(value)) ? true : false;
 		}
 	},
 	notText: {
 		match: /^![^\W,]/,
 		action: function(text) {
 			return text.slice(1).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(tiddler) {
+			return (~tiddler.text.indexOfi(value)) ? true : false;
 		}
 	},
 	or: {
@@ -169,70 +203,7 @@ var createTester = function(AST) {
 		var andBlock = [];
 		$.each(block, function(i, matchblock) {
 			$.each(matchblock, function(name, value) {
-				switch (name) {
-					case 'title':
-						andBlock.push(function(tiddler) {
-							return (tiddler.title === value) ? true : false;
-						});
-						break;
-					case 'notTitle':
-						andBlock.push(function(tiddler) {
-							return (tiddler.title !== value) ? true : false;
-						});
-						break;
-					case 'tag':
-						andBlock.push(function(tiddler) {
-							return (~tiddler.tags.indexOf(value)) ? true :
-								false;
-						});
-						break;
-					case 'notTag':
-						andBlock.push(function(tiddler) {
-							return (!~tiddler.tags.indexOf(value)) ? true :
-								false;
-						});
-						break;
-					case 'field':
-						andBlock.push(function(tiddler) {
-							return (tiddler.fields[value.field] &&
-								tiddler.fields[value.field] ===
-								value.value) ? true : false;
-						});
-						break;
-					case 'notField':
-						andBlock.push(function(tiddler) {
-							return (tiddler.fields[value.field] &&
-								tiddler.fields[value.field] !==
-								value.value) ? true : false;
-						});
-						break;
-					case 'space':
-						andBlock.push(function(tiddler) {
-							return (tiddler.bag.name.
-								split(/_(public|private)$/)[0] === value) ?
-								true : false;
-						});
-						break;
-					case 'notSpace':
-						andBlock.push(function(tiddler) {
-							return (tiddler.bag.name.
-								split(/_(public|private)$/)[0] !== value) ?
-								true : false;
-						});
-						break;
-					case 'text':
-						andBlock.push(function(tiddler) {
-							return (~tiddler.text.indexOfi(value)) ? true :
-								false;
-						});
-						break;
-					case 'notText':
-						andBlock.push(function(tiddler) {
-							return (~tiddler.text.indexOfi(value)) ? true :
-								false;
-						});
-						break;
-				}
+				andBlock.push(states[name].tiddlerTest);
 			});
 		});
 		orBlock.push(andFunc(andBlock));
