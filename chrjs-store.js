@@ -163,8 +163,10 @@ var states = {
 		action: function(text) {
 			return text.slice(2).split(/\]\](.*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (tiddler.title === value) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.title === value) ? true : false;
+			};
 		}
 	},
 	notTitle: {
@@ -172,8 +174,10 @@ var states = {
 		action: function(text) {
 			return text.slice(3).split(/\]\](.*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (tiddler.title !== value) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.title !== value) ? true : false;
+			};
 		}
 	},
 	tag: {
@@ -181,8 +185,10 @@ var states = {
 		action: function(text) {
 			return text.slice(1).split(/((?:\W|,).*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (~tiddler.tags.indexOf(value)) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (~tiddler.tags.indexOf(value)) ? true : false;
+			};
 		}
 	},
 	notTag: {
@@ -190,8 +196,10 @@ var states = {
 		action: function(text) {
 			return text.slice(2).split(/((?:\W|,).*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (!~tiddler.tags.indexOf(value)) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (!~tiddler.tags.indexOf(value)) ? true : false;
+			};
 		}
 	},
 	field: {
@@ -209,9 +217,11 @@ var states = {
 			};
 			return [match, rest];
 		},
-		tiddlerTest: function(tiddler) {
-			return (tiddler.fields[value.field] && tiddler.fields[value.field]
-				=== value.value) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.fields[value.field] &&
+					tiddler.fields[value.field] === value.value) ? true : false;
+			};
 		}
 	},
 	notField: {
@@ -229,9 +239,11 @@ var states = {
 			};
 			return [match, rest];
 		},
-		tiddlerTest: function(tiddler) {
-			return (tiddler.fields[value.field] && tiddler.fields[value.field]
-				!== value.value) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.fields[value.field] &&
+					tiddler.fields[value.field] !== value.value) ? true : false;
+			};
 		}
 	},
 	space: {
@@ -239,9 +251,11 @@ var states = {
 		action: function(text) {
 			return text.slice(1).split(/((?:\W|,).*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (tiddler.bag.name.split(/_(public|private)$/)[0] === value) ?
-				true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.bag.name.split(/_(public|private)$/)[0] ===
+					value) ? true : false;
+			};
 		}
 	},
 	notSpace: {
@@ -249,9 +263,11 @@ var states = {
 		action: function(text) {
 			return text.slice(2).split(/((?:\W|,).*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (tiddler.bag.name.split(/_(public|private)$/)[0] !== value) ?
-				true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.bag.name.split(/_(public|private)$/)[0] !==
+					value) ? true : false;
+			};
 		}
 	},
 	text: {
@@ -259,8 +275,10 @@ var states = {
 		action: function(text) {
 			return text.split(/((?:\W|,).*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (~tiddler.text.indexOfi(value)) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (~tiddler.text.indexOfi(value)) ? true : false;
+			};
 		}
 	},
 	notText: {
@@ -268,8 +286,10 @@ var states = {
 		action: function(text) {
 			return text.slice(1).split(/((?:\W|,).*)/);
 		},
-		tiddlerTest: function(tiddler) {
-			return (~tiddler.text.indexOfi(value)) ? true : false;
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (~tiddler.text.indexOfi(value)) ? true : false;
+			};
 		}
 	},
 	or: {
@@ -360,7 +380,7 @@ var createTester = function(AST) {
 		var andBlock = [];
 		$.each(block, function(i, matchblock) {
 			$.each(matchblock, function(name, value) {
-				andBlock.push(states[name].tiddlerTest);
+				andBlock.push(states[name].tiddlerTest(value));
 			});
 		});
 		orBlock.push(andFunc(andBlock));
