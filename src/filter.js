@@ -1,6 +1,6 @@
-define(function() {
+define(['filter-syntax'], function(parser) {
 
-var Tiddlers;
+var Tiddlers, contains;
 
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
 Tiddlers = function(store, tiddlers) {
@@ -12,18 +12,29 @@ Tiddlers = function(store, tiddlers) {
 		});
 	}
 
-	// private functions
-	var contains = function(field, match) {
-		return (field && field.indexOf(match) !== -1) ? true : false;
-	};
-
-	// public functions
 	$.extend(self, Tiddlers.fn);
 
 	return self;
 };
 
+// Check if match is in field
+contains = function(field, match) {
+	return (field && field.indexOf(match) !== -1) ? true : false;
+};
+
 Tiddlers.fn = {
+	find: function(match) {
+		var AST = parser.parse(match), filterFunc;
+
+		// generate a function to test whether each tiddler matches
+		filterFunc = parser.createTester(AST);
+
+		// now we have a function we can use to test with, loop through all the
+		// tiddlers and test them
+		return this.map(function(tiddler) {
+			return (filterFunc(tiddler)) ? tiddler : null;
+		});
+	},
 	tag: function(match) {
 		return this.map(function(tiddler) {
 			return contains(tiddler.tags, match) ? tiddler : null;
