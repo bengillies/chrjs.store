@@ -12,15 +12,13 @@ Tiddlers = function(store, tiddlers) {
 		});
 	}
 
-	// private functions
-	var contains = function(field, match) {
-		return (field && field.indexOf(match) !== -1) ? true : false;
-	};
-
-	// public functions
 	$.extend(self, Tiddlers.fn);
 
 	return self;
+};
+
+var contains = function(field, match) {
+	return (field && field.indexOf(match) !== -1) ? true : false;
 };
 
 Tiddlers.fn = {
@@ -136,6 +134,24 @@ Tiddlers.fn = {
 		var result = init, self = this;
 		$.each(self, function(i, tiddler) {
 			result = fn.apply(self, [tiddler, result]);
+		});
+		return result;
+	},
+	// turn the list of tiddlers into a set (i.e. make them unique)
+	unique: function() {
+		var set = {}, self = this,
+			result = Tiddlers(self.store);
+		$.each(this, function(i, tiddler) {
+			var oldBag, newBag, oldTiddler;
+			if (!set[tiddler.title]) {
+				set[tiddler.title] = tiddler;
+			} else if (!tiddler.lastSync) {
+				set[tiddler.title] = tiddler;
+			}
+		});
+
+		$.each(set, function(title, tiddler) {
+			result.push(tiddler);
 		});
 		return result;
 	},
