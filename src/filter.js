@@ -6,6 +6,7 @@ var Tiddlers, contains;
 Tiddlers = function(store, tiddlers) {
 	var self = [];
 	self.store = store;
+	self.ast = { type: 'and', value: [] };
 	if (tiddlers) {
 		$.each(tiddlers, function(i, tiddler) {
 			self.push(tiddler);
@@ -134,6 +135,14 @@ Tiddlers.fn = {
 	map: function(fn) {
 		var self = this,
 			result = Tiddlers(self.store);
+		result.ast = self.ast;
+		result.ast.value.push({
+			type: 'function',
+			value: function(tiddler) {
+				var res = fn.apply(result, [tiddler, i]);
+				return (res) ? true : false;
+			}
+		});
 		$.each(self, function(i, tiddler) {
 			var mappedTiddler = fn.apply(self, [tiddler, i]);
 			if (mappedTiddler) {
@@ -156,9 +165,7 @@ Tiddlers.fn = {
 			bindFunc = function(tiddler) {
 				fn.apply(self, [tiddler]);
 			};
-		self.each(function(tiddler) {
-			self.store.bind('tiddler', tiddler.title, bindFunc);
-		});
+		self.store.bind('filter', parser.createTester(self.ast), bindFunc);
 		return self;
 	},
 	// save tiddlers currently in list. Callback happens for each tiddler

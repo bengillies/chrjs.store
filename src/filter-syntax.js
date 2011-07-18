@@ -62,8 +62,9 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (tiddler.fields[value.field] &&
-					tiddler.fields[value.field] === value.value) ? true : false;
+				return (tiddler[value.field] || (tiddler.fields &&
+					tiddler.fields[value.field]) === value.value) ?
+						true : false;
 			};
 		}
 	},
@@ -84,8 +85,9 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (tiddler.fields[value.field] &&
-					tiddler.fields[value.field] !== value.value) ? true : false;
+				return (tiddler[value.fields] || (tiddler.fields &&
+					tiddler.fields[value.field]) !== value.value) ?
+						true : false;
 			};
 		}
 	},
@@ -120,7 +122,7 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (~tiddler.text.indexOfi(value)) ? true : false;
+				return (~tiddler.text.indexOf(value)) ? true : false;
 			};
 		}
 	},
@@ -131,7 +133,7 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (~tiddler.text.indexOfi(value)) ? true : false;
+				return (~tiddler.text.indexOf(value)) ? true : false;
 			};
 		}
 	},
@@ -165,73 +167,98 @@ var match = function(text) {
 // parse an entire filter string
 // return an AST
 var parse = function(text) {
-	var AST = [], filter, andBlock = [],
+	var AST = { type: 'or', value: [] }, filter,
+		andBlock = { type: 'and', value: [] },
 		result = match(text);
 	while (result) {
-		filter = {};
-		filter[result[0]] = result[1];
+		filter = {
+			type: result[0],
+			value: result[1]
+		};
 		if (filter.or) {
-			AST.push(andBlock);
-			andBlock = [];
+			AST.value.push(andBlock);
+			andBlock = { type: 'and', value: [] };
 		} else {
-			andBlock.push(filter);
+			andBlock.value.push(filter);
 		}
 		result = match(result[2]);
 	}
-	if (andBlock.length > 0) {
-		AST.push(andBlock);
+	if (andBlock.value.length > 0) {
+		AST.value.push(andBlock);
 	}
 	return AST;
 };
 
+// construct a single function that does AND matching on a tiddler
+// out of a list of sub match functions
+var andFunc = function(fns) {
+	return function(tiddler) {
+		var match = true;
+		$.each(fns, function(i, fn) {
+			if (!fn(tiddler)) {
+				match = false;
+				return false;
+			}
+		});
+		return match;
+	};
+};
+
+// construct a single function that does OR matching on a tiddler
+// out of a list of sub match functions
+var orFunc = function(fns) {
+	return function(tiddler) {
+		var match = false;
+		$.each(fns, function(i, fn) {
+			if (fn(tiddler)) {
+				match = true;
+				return false;
+			}
+		});
+		return match;
+	};
+};
+
 // take in an AST and return a function that, when called with a tiddler,
 // returns true or false depending on whether that tiddler matches
+// AST is an object with type and value attributes
 var createTester = function(AST) {
-	var filterFunc, orBlock = [],
-		// construct a single function that does AND matching on a tiddler
-		// out of a list of sub match functions
-		andFunc = function(fns) {
-			return function(tiddler) {
-				var match = true;
-				$.each(fns, function(i, fn) {
-					if (!fn(tiddler)) {
-						match = false;
-						return false;
-					}
+	// recurse through the AST and generate a tiddler tester function
+	var loopAST = function(block) {
+		var filterFunc, funcList = [],
+		switch (block.type) {
+			case 'and':
+				$.each(block.value, function(i, subBlock) {
+					funcList.push(loopAST(subBlock));
 				});
-				return match;
-			};
-		},
-		// construct a single function that does OR matching on a tiddler
-		// out of a list of sub match functions
-		orFunc = function(fns) {
-			return function(tiddler) {
-				var match = false;
-				$.each(fns, function(i, fn) {
-					if (fn(tiddler)) {
-						match = true;
-						return false;
-					}
+				filterFunc = andFunc(funcList);
+				break;
+			case 'or':
+				$.each(block.value, function(i, subBlock) {
+					funcList.push(loopAST(subBlock));
 				});
-				return match;
-			};
-		};
+				filterFunc = orFunc(funcList);
+				break;
+			case 'function':
+				filterFunc = function(tiddler) {
+					return (block.value(tiddler)) ? true : false;
+				};
+				break;
+			default:
+				filterFunc = states[block.type].tiddlerTest(block.value);
+		}
+		return filterFunc;
+	}, tiddlerTester, filterFunc;
 
-	// loop through the AST and construct a single function that can be used
-	// to test whether each tiddler matches the filter given
-	$.each(AST, function(i, block) {
-		var andBlock = [];
-		$.each(block, function(i, matchblock) {
-			$.each(matchblock, function(name, value) {
-				andBlock.push(states[name].tiddlerTest(value));
-			});
-		});
-		orBlock.push(andFunc(andBlock));
-	});
+	filterFunc = loopAST(AST);
 
-	filterFunc = orFunc(orBlock);
+	// Ensure that the tiddler passed in is not modified during testing
+	var tiddlerTester = function(tiddler) {
+		var safeTid = $.extend(true, new tiddlyweb.Tiddler(), tiddler);
+		return filterFunc(safeTid);
+	};
 
-	return filterFunc;
+	return tiddlerTester;
 };
 
 return {

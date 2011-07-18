@@ -4,14 +4,17 @@ return function() {
 	var binds = {
 		recipe: { all: [] },
 		bag: { all: [] },
-		tiddler: { all: [] }
+		tiddler: { all: [] },
+		filter: []
 	};
 
 	var result = {
 		// takes thing to bind to (e.g. 'tiddler'), optional name (e.g. tiddler title), and callback that fires whenever object updates.
 		// if name not present, then callbck fires whenever any object of that type updates.
 		bind: function(type, name, callback) {
-			if (binds[type]) {
+			if (type === 'filter') {
+				binds.filter.push({ test: name, callback: callback });
+			} else if (binds[type]) {
 				if (name) {
 					if (!binds[type][name + type]) {
 						binds[type][name + type] = [];
@@ -38,7 +41,13 @@ return function() {
 					return [];
 				}
 			};
-			if ((binds[type]) && (name)) {
+			if (type === 'filter') {
+				$.each(binds.filter, function(i, obj) {
+					if (obj.test === callback) {
+						binds.filter.splice(i, 1);
+					}
+				});
+			} else if ((binds[type]) && (name)) {
 					binds[type][name + type] =
 						stripCallback(binds[type][name + type]);
 			} else {
@@ -48,7 +57,8 @@ return function() {
 
 		// fire an event manually. args is the object that gets passed into the event handlers
 		trigger: function(type, name, args) {
-			var message = ($.isArray(args)) ? args : [args];
+			var message = ($.isArray(args)) ? args : [args],
+				tiddler, self = this;
 			if (binds[type]) {
 				$.each(binds[type].all, function(i, func) {
 					func.apply(self, message);
@@ -58,6 +68,16 @@ return function() {
 						func.apply(self, message);
 					});
 				}
+			}
+
+			// trigger any filters that have been bound
+			if (type === 'tiddler') {
+				tiddler = args[0];
+				$.each(binds.filter, function(i, obj) {
+					if (obj.test(tiddler)) {
+						obj.callback.apply(self, message);
+					}
+				});
 			}
 		}
 	};
