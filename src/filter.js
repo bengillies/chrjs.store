@@ -96,10 +96,15 @@ Tiddlers.fn = {
 			current = false;
 		}
 		if (current !== undefined) {
-			spaceName = this.store.recipe.name.replace(regex, '');
+			spaceName = this.store.recipe &&
+				this.store.recipe.name.replace(regex, '');
 		}
 		return this.map(function(tiddler) {
 			var bag = (tiddler.bag && tiddler.bag.name).replace(regex, '');
+			if (!spaceName) {
+				spaceName = (this.store.recipe &&
+					this.store.recipe.name.replace(regex, '')) || bag;
+			}
 			if (current) {
 				return (bag === spaceName) ? tiddler : null;
 			} else if (current === false) {

@@ -72,7 +72,7 @@ return function() {
 
 			// trigger any filters that have been bound
 			if (type === 'tiddler') {
-				tiddler = args[0];
+				tiddler = (args instanceof tiddlyweb.Tiddler) ? args : args[0];
 				$.each(binds.filter, function(i, obj) {
 					if (obj.test(tiddler)) {
 						obj.callback.apply(self, message);

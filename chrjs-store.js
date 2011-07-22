@@ -47,21 +47,12 @@
  * @param payload a function to call with (require, exports, module) params
  */
 
-(function() {
+var obj = (function() {
 
-if (window.require) {
-    require.packaged = true;
-    return;
-}
-
-var _define = function(module, deps, payload) {
+var define = function(module, deps, payload) {
     if (typeof module !== 'string') {
-        if (_define.original)
-            _define.original.apply(window, arguments);
-        else {
-            console.error('dropping module because define wasn\'t a string.');
-            console.trace();
-        }
+        console.error('dropping module because define wasn\'t a string.');
+        console.trace();
         return;
     }
 
@@ -81,32 +72,22 @@ var _define = function(module, deps, payload) {
         deps: deps
     };
 };
-if (window.define)
-    _define.original = window.define;
-
-window.define = _define;
-
 
 /**
  * Get at functionality define()ed using the function above
  */
-var _require = function(module, callback) {
+var require = function(module, callback) {
     if (Object.prototype.toString.call(module) === "[object Array]") {
         var params = [];
         for (var i = 0, l = module.length; i < l; ++i) {
             var dep = lookup(module[i]);
-            if (!dep && _require.original)
-                return _require.original.apply(window, arguments);
             params.push(dep);
         }
         if (callback) {
             callback.apply(null, params);
         }
-    }
-    else if (typeof module === 'string') {
+    } else if (typeof module === 'string') {
         var payload = lookup(module);
-        if (!payload && _require.original)
-            return _require.original.apply(window, arguments);
 
         if (callback) {
             callback();
@@ -114,17 +95,7 @@ var _require = function(module, callback) {
 
         return payload;
     }
-    else {
-        if (_require.original)
-            return _require.original.apply(window, arguments);
-    }
 };
-
-if (window.require)
-    _require.original = window.require;
-
-window.require = _require;
-require.packaged = true;
 
 /**
  * Internal function to lookup moduleNames and resolve them by calling the
@@ -154,7 +125,14 @@ var lookup = function(moduleName) {
     return module;
 };
 
+return {
+    require: require,
+    define: define
+};
 })();
+
+var require = obj.require,
+    define = obj.define;
 define('filter-syntax',['require','exports','module'],function() {
 
 var states = {
@@ -269,6 +247,28 @@ var states = {
 			return function(tiddler) {
 				return (tiddler.bag.name.split(/_(public|private)$/)[0] !==
 					value) ? true : false;
+			};
+		}
+	},
+	modifier: {
+		match: /^\+.+/,
+		action: function(text) {
+			return text.slice(1).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.modifier === value) ? true : false;
+			};
+		}
+	},
+	notModifier: {
+		match: /^!\+.+/,
+		action: function(text) {
+			return text.slice(2).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.modifier !== value) ? true : false;
 			};
 		}
 	},
@@ -523,10 +523,15 @@ Tiddlers.fn = {
 			current = false;
 		}
 		if (current !== undefined) {
-			spaceName = this.store.recipe.name.replace(regex, '');
+			spaceName = this.store.recipe &&
+				this.store.recipe.name.replace(regex, '');
 		}
 		return this.map(function(tiddler) {
 			var bag = (tiddler.bag && tiddler.bag.name).replace(regex, '');
+			if (!spaceName) {
+				spaceName = (this.store.recipe &&
+					this.store.recipe.name.replace(regex, '')) || bag;
+			}
 			if (current) {
 				return (bag === spaceName) ? tiddler : null;
 			} else if (current === false) {
@@ -730,7 +735,7 @@ return function() {
 
 			// trigger any filters that have been bound
 			if (type === 'tiddler') {
-				tiddler = args[0];
+				tiddler = (args instanceof tiddlyweb.Tiddler) ? args : args[0];
 				$.each(binds.filter, function(i, obj) {
 					if (obj.test(tiddler)) {
 						obj.callback.apply(self, message);
