@@ -72,11 +72,27 @@ Tiddlers.fn = {
 		});
 	},
 	// the space the tiddler originates from (i.e. not just included in)
+	// blank/true matches the current space, false matches everything else
 	space: function(name) {
-		var regex = /(_public|_private|_archive)$/;
+		var regex = /(_public|_private|_archive)$/,
+			current = undefined, spaceName;
+		if (name === true || name === undefined) {
+			current = true;
+		} else if (name === false) {
+			current = false;
+		}
+		if (current !== undefined) {
+			spaceName = this.store.recipe.name.replace(regex, '');
+		}
 		return this.map(function(tiddler) {
-			var bag = tiddler.bag && tiddler.bag.name;
-			return (bag.replace(regex, '') === name) ? tiddler : null;
+			var bag = (tiddler.bag && tiddler.bag.name).replace(regex, '');
+			if (current) {
+				return (bag === spaceName) ? tiddler : null;
+			} else if (current === false) {
+				return (bag === spaceName) ? null: tiddler;
+			} else {
+				return (bag === name) ? tiddler : null;
+			}
 		});
 	},
 	// no arguments matches the default recipe
