@@ -273,9 +273,9 @@ var states = {
 		}
 	},
 	text: {
-		match: /^[^!\W,]/,
+		match: /^"[^"]+"/,
 		action: function(text) {
-			return text.split(/((?:\W|,).*)/);
+			return text.slice(1).split(/"(.*)/);
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
@@ -284,13 +284,13 @@ var states = {
 		}
 	},
 	notText: {
-		match: /^![^\W,]/,
+		match: /^!"[^"]+"/,
 		action: function(text) {
-			return text.slice(1).split(/((?:\W|,).*)/);
+			return text.slice(2).split(/"(.*)/);
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (~tiddler.text.indexOf(value)) ? true : false;
+				return (~tiddler.text.indexOf(value)) ? false : true;
 			};
 		}
 	},
