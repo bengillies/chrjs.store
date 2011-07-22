@@ -219,8 +219,9 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (tiddler.fields[value.field] &&
-					tiddler.fields[value.field] === value.value) ? true : false;
+				return (tiddler[value.field] || (tiddler.fields &&
+					tiddler.fields[value.field]) === value.value) ?
+						true : false;
 			};
 		}
 	},
@@ -241,8 +242,9 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (tiddler.fields[value.field] &&
-					tiddler.fields[value.field] !== value.value) ? true : false;
+				return (tiddler[value.fields] || (tiddler.fields &&
+					tiddler.fields[value.field]) !== value.value) ?
+						true : false;
 			};
 		}
 	},
@@ -277,7 +279,7 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (~tiddler.text.indexOfi(value)) ? true : false;
+				return (~tiddler.text.indexOf(value)) ? true : false;
 			};
 		}
 	},
@@ -288,7 +290,7 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (~tiddler.text.indexOfi(value)) ? true : false;
+				return (~tiddler.text.indexOf(value)) ? true : false;
 			};
 		}
 	},
@@ -322,73 +324,98 @@ var match = function(text) {
 // parse an entire filter string
 // return an AST
 var parse = function(text) {
-	var AST = [], filter, andBlock = [],
+	var AST = { type: 'or', value: [] }, filter,
+		andBlock = { type: 'and', value: [] },
 		result = match(text);
 	while (result) {
-		filter = {};
-		filter[result[0]] = result[1];
+		filter = {
+			type: result[0],
+			value: result[1]
+		};
 		if (filter.or) {
-			AST.push(andBlock);
-			andBlock = [];
+			AST.value.push(andBlock);
+			andBlock = { type: 'and', value: [] };
 		} else {
-			andBlock.push(filter);
+			andBlock.value.push(filter);
 		}
 		result = match(result[2]);
 	}
-	if (andBlock.length > 0) {
-		AST.push(andBlock);
+	if (andBlock.value.length > 0) {
+		AST.value.push(andBlock);
 	}
 	return AST;
 };
 
+// construct a single function that does AND matching on a tiddler
+// out of a list of sub match functions
+var andFunc = function(fns) {
+	return function(tiddler) {
+		var match = true;
+		$.each(fns, function(i, fn) {
+			if (!fn(tiddler)) {
+				match = false;
+				return false;
+			}
+		});
+		return match;
+	};
+};
+
+// construct a single function that does OR matching on a tiddler
+// out of a list of sub match functions
+var orFunc = function(fns) {
+	return function(tiddler) {
+		var match = false;
+		$.each(fns, function(i, fn) {
+			if (fn(tiddler)) {
+				match = true;
+				return false;
+			}
+		});
+		return match;
+	};
+};
+
 // take in an AST and return a function that, when called with a tiddler,
 // returns true or false depending on whether that tiddler matches
+// AST is an object with type and value attributes
 var createTester = function(AST) {
-	var filterFunc, orBlock = [],
-		// construct a single function that does AND matching on a tiddler
-		// out of a list of sub match functions
-		andFunc = function(fns) {
-			return function(tiddler) {
-				var match = true;
-				$.each(fns, function(i, fn) {
-					if (!fn(tiddler)) {
-						match = false;
-						return false;
-					}
+	// recurse through the AST and generate a tiddler tester function
+	var loopAST = function(block) {
+		var filterFunc, funcList = [];
+		switch (block.type) {
+			case 'and':
+				$.each(block.value, function(i, subBlock) {
+					funcList.push(loopAST(subBlock));
 				});
-				return match;
-			};
-		},
-		// construct a single function that does OR matching on a tiddler
-		// out of a list of sub match functions
-		orFunc = function(fns) {
-			return function(tiddler) {
-				var match = false;
-				$.each(fns, function(i, fn) {
-					if (fn(tiddler)) {
-						match = true;
-						return false;
-					}
+				filterFunc = andFunc(funcList);
+				break;
+			case 'or':
+				$.each(block.value, function(i, subBlock) {
+					funcList.push(loopAST(subBlock));
 				});
-				return match;
-			};
-		};
+				filterFunc = orFunc(funcList);
+				break;
+			case 'function':
+				filterFunc = function(tiddler) {
+					return (block.value(tiddler)) ? true : false;
+				};
+				break;
+			default:
+				filterFunc = states[block.type].tiddlerTest(block.value);
+		}
+		return filterFunc;
+	}, tiddlerTester, filterFunc;
 
-	// loop through the AST and construct a single function that can be used
-	// to test whether each tiddler matches the filter given
-	$.each(AST, function(i, block) {
-		var andBlock = [];
-		$.each(block, function(i, matchblock) {
-			$.each(matchblock, function(name, value) {
-				andBlock.push(states[name].tiddlerTest(value));
-			});
-		});
-		orBlock.push(andFunc(andBlock));
-	});
+	filterFunc = loopAST(AST);
 
-	filterFunc = orFunc(orBlock);
+	// Ensure that the tiddler passed in is not modified during testing
+	var tiddlerTester = function(tiddler) {
+		var safeTid = $.extend(true, new tiddlyweb.Tiddler(), tiddler);
+		return filterFunc(safeTid);
+	};
 
-	return filterFunc;
+	return tiddlerTester;
 };
 
 return {
@@ -406,6 +433,7 @@ var Tiddlers, contains;
 Tiddlers = function(store, tiddlers) {
 	var self = [];
 	self.store = store;
+	self.ast = { type: 'and', value: [] };
 	if (tiddlers) {
 		$.each(tiddlers, function(i, tiddler) {
 			self.push(tiddler);
@@ -485,11 +513,27 @@ Tiddlers.fn = {
 		});
 	},
 	// the space the tiddler originates from (i.e. not just included in)
+	// blank/true matches the current space, false matches everything else
 	space: function(name) {
-		var regex = /(_public|_private|_archive)$/;
+		var regex = /(_public|_private|_archive)$/,
+			current = undefined, spaceName;
+		if (name === true || name === undefined) {
+			current = true;
+		} else if (name === false) {
+			current = false;
+		}
+		if (current !== undefined) {
+			spaceName = this.store.recipe.name.replace(regex, '');
+		}
 		return this.map(function(tiddler) {
-			var bag = tiddler.bag && tiddler.bag.name;
-			return (bag.replace(regex, '') === name) ? tiddler : null;
+			var bag = (tiddler.bag && tiddler.bag.name).replace(regex, '');
+			if (current) {
+				return (bag === spaceName) ? tiddler : null;
+			} else if (current === false) {
+				return (bag === spaceName) ? null: tiddler;
+			} else {
+				return (bag === name) ? tiddler : null;
+			}
 		});
 	},
 	// no arguments matches the default recipe
@@ -534,6 +578,14 @@ Tiddlers.fn = {
 	map: function(fn) {
 		var self = this,
 			result = Tiddlers(self.store);
+		result.ast = self.ast;
+		result.ast.value.push({
+			type: 'function',
+			value: function(tiddler) {
+				var res = fn.apply(result, [tiddler, i]);
+				return (res) ? true : false;
+			}
+		});
 		$.each(self, function(i, tiddler) {
 			var mappedTiddler = fn.apply(self, [tiddler, i]);
 			if (mappedTiddler) {
@@ -550,15 +602,31 @@ Tiddlers.fn = {
 		});
 		return result;
 	},
+	// turn the list of tiddlers into a set (i.e. make them unique)
+	unique: function() {
+		var set = {}, self = this,
+			result = Tiddlers(self.store);
+		$.each(this, function(i, tiddler) {
+			var oldBag, newBag, oldTiddler;
+			if (!set[tiddler.title]) {
+				set[tiddler.title] = tiddler;
+			} else if (!tiddler.lastSync) {
+				set[tiddler.title] = tiddler;
+			}
+		});
+
+		$.each(set, function(title, tiddler) {
+			result.push(tiddler);
+		});
+		return result;
+	},
 	// bind fn to the current set of matched tiddlers.
 	bind: function(fn) {
 		var self = this,
 			bindFunc = function(tiddler) {
 				fn.apply(self, [tiddler]);
 			};
-		self.each(function(tiddler) {
-			self.store.bind('tiddler', tiddler.title, bindFunc);
-		});
+		self.store.bind('filter', parser.createTester(self.ast), bindFunc);
 		return self;
 	},
 	// save tiddlers currently in list. Callback happens for each tiddler
@@ -594,14 +662,17 @@ return function() {
 	var binds = {
 		recipe: { all: [] },
 		bag: { all: [] },
-		tiddler: { all: [] }
+		tiddler: { all: [] },
+		filter: []
 	};
 
 	var result = {
 		// takes thing to bind to (e.g. 'tiddler'), optional name (e.g. tiddler title), and callback that fires whenever object updates.
 		// if name not present, then callbck fires whenever any object of that type updates.
 		bind: function(type, name, callback) {
-			if (binds[type]) {
+			if (type === 'filter') {
+				binds.filter.push({ test: name, callback: callback });
+			} else if (binds[type]) {
 				if (name) {
 					if (!binds[type][name + type]) {
 						binds[type][name + type] = [];
@@ -628,7 +699,13 @@ return function() {
 					return [];
 				}
 			};
-			if ((binds[type]) && (name)) {
+			if (type === 'filter') {
+				$.each(binds.filter, function(i, obj) {
+					if (obj.test === callback) {
+						binds.filter.splice(i, 1);
+					}
+				});
+			} else if ((binds[type]) && (name)) {
 					binds[type][name + type] =
 						stripCallback(binds[type][name + type]);
 			} else {
@@ -638,7 +715,8 @@ return function() {
 
 		// fire an event manually. args is the object that gets passed into the event handlers
 		trigger: function(type, name, args) {
-			var message = ($.isArray(args)) ? args : [args];
+			var message = ($.isArray(args)) ? args : [args],
+				tiddler, self = this;
 			if (binds[type]) {
 				$.each(binds[type].all, function(i, func) {
 					func.apply(self, message);
@@ -648,6 +726,16 @@ return function() {
 						func.apply(self, message);
 					});
 				}
+			}
+
+			// trigger any filters that have been bound
+			if (type === 'tiddler') {
+				tiddler = args[0];
+				$.each(binds.filter, function(i, obj) {
+					if (obj.test(tiddler)) {
+						obj.callback.apply(self, message);
+					}
+				});
 			}
 		}
 	};

@@ -225,7 +225,7 @@ var orFunc = function(fns) {
 var createTester = function(AST) {
 	// recurse through the AST and generate a tiddler tester function
 	var loopAST = function(block) {
-		var filterFunc, funcList = [],
+		var filterFunc, funcList = [];
 		switch (block.type) {
 			case 'and':
 				$.each(block.value, function(i, subBlock) {

@@ -86,11 +86,27 @@ Tiddlers.fn = {
 		});
 	},
 	// the space the tiddler originates from (i.e. not just included in)
+	// blank/true matches the current space, false matches everything else
 	space: function(name) {
-		var regex = /(_public|_private|_archive)$/;
+		var regex = /(_public|_private|_archive)$/,
+			current = undefined, spaceName;
+		if (name === true || name === undefined) {
+			current = true;
+		} else if (name === false) {
+			current = false;
+		}
+		if (current !== undefined) {
+			spaceName = this.store.recipe.name.replace(regex, '');
+		}
 		return this.map(function(tiddler) {
-			var bag = tiddler.bag && tiddler.bag.name;
-			return (bag.replace(regex, '') === name) ? tiddler : null;
+			var bag = (tiddler.bag && tiddler.bag.name).replace(regex, '');
+			if (current) {
+				return (bag === spaceName) ? tiddler : null;
+			} else if (current === false) {
+				return (bag === spaceName) ? null: tiddler;
+			} else {
+				return (bag === name) ? tiddler : null;
+			}
 		});
 	},
 	// no arguments matches the default recipe
@@ -156,6 +172,24 @@ Tiddlers.fn = {
 		var result = init, self = this;
 		$.each(self, function(i, tiddler) {
 			result = fn.apply(self, [tiddler, result]);
+		});
+		return result;
+	},
+	// turn the list of tiddlers into a set (i.e. make them unique)
+	unique: function() {
+		var set = {}, self = this,
+			result = Tiddlers(self.store);
+		$.each(this, function(i, tiddler) {
+			var oldBag, newBag, oldTiddler;
+			if (!set[tiddler.title]) {
+				set[tiddler.title] = tiddler;
+			} else if (!tiddler.lastSync) {
+				set[tiddler.title] = tiddler;
+			}
+		});
+
+		$.each(set, function(title, tiddler) {
+			result.push(tiddler);
 		});
 		return result;
 	},
