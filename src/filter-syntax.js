@@ -115,6 +115,28 @@ var states = {
 			};
 		}
 	},
+	modifier: {
+		match: /^\+.+/,
+		action: function(text) {
+			return text.slice(1).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.modifier === value) ? true : false;
+			};
+		}
+	},
+	notModifier: {
+		match: /^!\+.+/,
+		action: function(text) {
+			return text.slice(2).split(/((?:\W|,).*)/);
+		},
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.modifier !== value) ? true : false;
+			};
+		}
+	},
 	text: {
 		match: /^[^!\W,]/,
 		action: function(text) {
