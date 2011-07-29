@@ -40,8 +40,8 @@ remotes: testclean
 		https://raw.github.com/jquery/qunit/master/qunit/qunit.css
 	curl -o test/lib/jquery.js \
 		http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.js
-	curl -o test/lib/jquery-json.js \
-		http://jquery-json.googlecode.com/files/jquery.json-2.2.js
+	curl -o test/lib/json2.js \
+		https://raw.github.com/douglascrockford/JSON-js/master/json2.js
 	curl -o test/lib/chrjs.js \
 		https://raw.github.com/tiddlyweb/chrjs/master/main.js
 
