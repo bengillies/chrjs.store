@@ -160,12 +160,12 @@ Tiddlers.fn = {
 		result.ast.value.push({
 			type: 'function',
 			value: function(tiddler) {
-				var res = fn.apply(result, [tiddler, i]);
+				var res = fn.apply(result, [tiddler]);
 				return (res) ? true : false;
 			}
 		});
 		$.each(self, function(i, tiddler) {
-			var mappedTiddler = fn.apply(self, [tiddler, i]);
+			var mappedTiddler = fn.apply(self, [tiddler]);
 			if (mappedTiddler) {
 				result.push(mappedTiddler);
 			}

@@ -98,7 +98,11 @@ return function(tiddlerCallback, getCached) {
 			allTiddlers.push(tiddler);
 		});
 
-		if (allTiddlers[name]) {
+		if ((typeof match === 'undefined') && (typeof name === 'string')) {
+			allTiddlers = allTiddlers.find(name);
+		} else if (typeof name === 'function') {
+			allTiddlers = allTiddlers.map(name);
+		} else if (allTiddlers[name]) {
 			allTiddlers = allTiddlers[name](match);
 		} else if (name) {
 			allTiddlers = allTiddlers.attr(name, match);

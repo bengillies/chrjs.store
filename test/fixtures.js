@@ -71,3 +71,66 @@ $.ajax = function(options) {
 		_oldAjax.apply(this, arguments);
 	}
 };
+
+/*
+ * define some tiddlers for use in test_filters
+ */
+
+$.fixtures = {
+	tiddlers: [
+		new tiddlyweb.Tiddler({
+			title: 'Foo',
+			text: 'Foo was \'ere',
+			tags: ['cat', 'dog'],
+			fields: { cake: 'lie' },
+			modifier: 'bengillies',
+			type: 'text/plain',
+			recipe: new tiddlyweb.Recipe('foo', '/'),
+			bag: new tiddlyweb.Bag('foo_public', '/')
+		}),
+		new tiddlyweb.Tiddler({
+			title: 'Bar',
+			text: 'Bar was \'ere',
+			tags: ['cat', 'rabbit'],
+			type: 'text/x-tiddler',
+			recipe: new tiddlyweb.Recipe('rabbits', '/'),
+			bag: new tiddlyweb.Bag('rabbits_public', '/')
+		}),
+		new tiddlyweb.Tiddler({
+			title: 'HelloThere',
+			text: 'Hello [[World]]',
+			tags: ['introduction'],
+			fields: { cake: 'lie' },
+			modifier: 'bengillies',
+			type: 'text/plain',
+			recipe: new tiddlyweb.Recipe('cakes', '/'),
+			bag: new tiddlyweb.Bag('cakes_public', '/')
+		}),
+		new tiddlyweb.Tiddler({
+			title: 'Fluffy',
+			text: 'Meow meow',
+			tags: ['cat'],
+			type: 'application/cat',
+			recipe: new tiddlyweb.Recipe('cats', '/'),
+			bag: new tiddlyweb.Bag('cats_public', '/')
+		}),
+		new tiddlyweb.Tiddler({
+			title: 'Rover',
+			text: 'Woof woof, I\'m a dog, woof woof',
+			tags: ['dog', 'introduction'],
+			fields: { cake: 'lie' },
+			type: 'text/plain',
+			recipe: new tiddlyweb.Recipe('rabbits', '/'),
+			bag: new tiddlyweb.Bag('rabbits_public', '/')
+		}),
+		new tiddlyweb.Tiddler({
+			title: 'bunnywunny',
+			text: 'I\'m a bunny rabbit',
+			tags: ['rabbit', 'introduction'],
+			fields: { cake: 'lie' },
+			modifier: 'bengillies',
+			type: 'text/plain',
+			bag: new tiddlyweb.Bag('rabbits_public', '/')
+		})
+	]
+};
