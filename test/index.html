@@ -12,10 +12,15 @@
 		<h2 id="qunit-userAgent"></h2>
 		<ol id="qunit-tests"></ol>
 
-		<!--load QUnit and dependencies. You must run make remotes first.-->
+		<!--load QUnit and dependencies. You must run `make remotes` first.-->
 		<script src="lib/qunit.js" type="text/javascript"></script>
 		<script src="lib/jquery.js" type="text/javascript"></script>
-		<script src="lib/json2.js" type="text/javascript"></script>
+		<script>
+			// load JSON polyfill only if necessary
+			if(typeof JSON === "undefined") {
+				document.write('<script src="lib/json2.js"><\/script>');
+			}
+		</script>
 		<script src="lib/chrjs.js" type="text/javascript"></script>
 		<script src="../chrjs-store.js" type="text/javascript"></script>
 		<script src="fixtures.js" type="text/javascript"></script>
