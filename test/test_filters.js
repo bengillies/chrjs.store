@@ -27,12 +27,12 @@ test('title filter', function() {
 test('tag filter', function() {
 	var tids = ts('tags', 'dog');
 	strictEqual(tids.length, 2);
-	$.each(function(i, tid) {
+	$.each(tids, function(i, tid) {
 		strictEqual(!!~tid.tags.indexOf('dog'), true);
 	});
 	tids = ts().tag('dog');
 	strictEqual(tids.length, 2);
-	$.each(function(i, tid) {
+	$.each(tids, function(i, tid) {
 		strictEqual(!!~tid.tags.indexOf('dog'), true);
 	});
 });
@@ -40,12 +40,12 @@ test('tag filter', function() {
 test('field filter', function() {
 	var tids = ts('cake', 'lie');
 	strictEqual(tids.length, 4);
-	$.each(function(i, tid) {
+	$.each(tids, function(i, tid) {
 		strictEqual(tid.fields.cake, 'lie');
 	});
 	tids = ts().attr('cake', 'lie');
 	strictEqual(tids.length, 4);
-	$.each(function(i, tid) {
+	$.each(tids, function(i, tid) {
 		strictEqual(tid.fields.cake, 'lie');
 	});
 });
