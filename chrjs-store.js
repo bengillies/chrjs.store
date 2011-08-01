@@ -1266,11 +1266,14 @@ return function(tiddlerCallback, getCached) {
 	self.search = function(query, callback) {
 		var searchObj = new tiddlyweb.Search(query, '/');
 		searchObj.get(function(tiddlers) {
+			var safeCollection = [];
 			$.each(tiddlers, function(i, tiddler) {
 				replace(tiddler);
+				safeCollection.push($.extend(true, new tiddlyweb.Tiddler(),
+					tiddler));
 			});
 
-			callback(tiddlers);
+			callback(safeCollection);
 		}, function(xhr, err, errMsg) {
 			callback(null, {
 				name: 'SearchError',
