@@ -40,9 +40,9 @@ return {
 		}
 	},
 	list: function() {
-		var tiddlers = [];
+		var tiddlers = [], i, l;
 		if (isLocalStorage) {
-			$.each(window.localStorage, function(i) {
+			for (i = 0, l = window.localStorage.length; i < l; i++) {
 				try {
 					var key = window.localStorage.key(i), names, bagName, name,
 						tiddlerJSON, tiddler;
@@ -60,7 +60,7 @@ return {
 				} catch(e) {
 					// not a chrjs-store cached tiddler
 				}
-			});
+			};
 		}
 		return tiddlers;
 	},
