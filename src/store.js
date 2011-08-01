@@ -408,6 +408,34 @@ return function(tiddlerCallback, getCached) {
 		return self;
 	};
 
+	// search for some tiddlers and add the results to the store.
+	// callback fires when the search returns.
+	// query is a string appended to the url as /search?q=<query>
+	self.search = function(query, callback) {
+		var searchObj = new tiddlyweb.Search(query, '/');
+		searchObj.get(function(tiddlers) {
+			$.each(tiddlers, function(i, tiddler) {
+				replace(tiddler);
+			});
+
+			callback(tiddlers);
+		}, function(xhr, err, errMsg) {
+			callback(null, {
+				name: 'SearchError',
+				message: 'Error retrieving tiddlers from search: ' + errMsg,
+			}, xhr);
+		});
+
+		return self;
+	};
+
+	// make sure we get everything we can from xhrs
+	$.ajaxSetup({
+		beforeSend: function(xhr) {
+			xhr.setRequestHeader("X-ControlView", "false");
+		}
+	});
+
 	// import pending from localStorage
 	self.retrieveCached = function() {
 		$.each(cache.list(), function(i, tiddler) {
