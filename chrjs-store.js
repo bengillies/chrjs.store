@@ -47,47 +47,66 @@
  * @param payload a function to call with (require, exports, module) params
  */
 
-var obj = (function() {
+(function() {
 
-var define = function(module, deps, payload) {
+var _define = window.define;
+window.define = function(module, deps, payload) {
+    if (typeof define.original === 'function') {
+        define.original.apply(this, arguments);
+    }
+
     if (typeof module !== 'string') {
-        console.error('dropping module because define wasn\'t a string.');
-        console.trace();
         return;
     }
 
-    if (arguments.length == 2)
+    if (arguments.length === 2) {
         payload = deps;
+    }
 
-    if (!define.modules)
+    if (!define.modules) {
         define.modules = {
             require: { payload: window.require, deps: [] },
             define: { payload: window.define, deps: [] },
             exports: { payload: {}, deps: [] },
             module: { payload: {}, deps: [] }
         };
+    }
 
     define.modules[module] = {
         payload: payload,
         deps: deps
     };
 };
+define.original = _define;
+define.modules = (_define && _define.modules) ? _define.modules : {};
 
 /**
  * Get at functionality define()ed using the function above
  */
-var require = function(module, callback) {
+var _require = window.require;
+window.require = function(module, callback) {
+    var params, dep, payload, i, l;
+
     if (Object.prototype.toString.call(module) === "[object Array]") {
-        var params = [];
-        for (var i = 0, l = module.length; i < l; ++i) {
-            var dep = lookup(module[i]);
-            params.push(dep);
+        params = [];
+        for (i = 0, l = module.length; i < l; ++i) {
+            dep = lookup(module[i]);
+            if (dep) {
+                params.push(dep);
+            } else {
+                require.original.apply(this, arguments);
+                return null;
+            }
         }
         if (callback) {
             callback.apply(null, params);
         }
     } else if (typeof module === 'string') {
-        var payload = lookup(module);
+        payload = lookup(module);
+
+        if (!payload) {
+            return require.original.apply(this, arguments);
+        }
 
         if (callback) {
             callback();
@@ -96,6 +115,7 @@ var require = function(module, callback) {
         return payload;
     }
 };
+require.original = _require;
 
 /**
  * Internal function to lookup moduleNames and resolve them by calling the
@@ -105,8 +125,7 @@ var lookup = function(moduleName) {
     var mod = define.modules[moduleName],
         module = mod ? mod.payload : null,
         deps = mod ? mod.deps : null;
-    if (module == null) {
-        console.error('Missing module: ' + moduleName);
+    if (!module) {
         return null;
     }
 
@@ -125,14 +144,7 @@ var lookup = function(moduleName) {
     return module;
 };
 
-return {
-    require: require,
-    define: define
-};
-})();
-
-var require = obj.require,
-    define = obj.define;
+}());
 define('filter-syntax',['require','exports','module'],function() {
 
 // split the string up into a matched part and the rest, and remove any tokens
