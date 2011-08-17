@@ -242,7 +242,7 @@ return function(tiddlerCallback, getCached) {
 				}, xhr);
 			}, (render) ? 'render=1' : '');
 		} else if (callback) {
-			callback.call(null, {
+			callback.call(self, null, {
 				name: 'NotFoundError',
 				message: 'Tiddler not found'
 			});
