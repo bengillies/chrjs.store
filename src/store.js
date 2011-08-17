@@ -294,6 +294,7 @@ return function(tiddlerCallback, getCached) {
 	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
 			var tid;
+			cache.remove(tiddler);
 			cache.set(tiddler);
 			tid = $.extend( true, new tiddlyweb.Tiddler(), tiddler);
 			self.pending[tid.title] = resource(tid, true);

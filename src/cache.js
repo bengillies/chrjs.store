@@ -35,9 +35,11 @@ return {
 		return null;
 	},
 	remove: function(tiddler) {
-		var key = getStorageID(tiddler);
+		var key = getStorageID(tiddler),
+			noBagKey = '/' + key.split('/')[1];
 		if (isLocalStorage) {
 			window.localStorage.removeItem(key);
+			window.localStorage.removeItem(noBagKey);
 		}
 	},
 	list: function() {

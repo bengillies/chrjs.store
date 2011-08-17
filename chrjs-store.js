@@ -824,9 +824,11 @@ return {
 		return null;
 	},
 	remove: function(tiddler) {
-		var key = getStorageID(tiddler);
+		var key = getStorageID(tiddler),
+			noBagKey = '/' + key.split('/')[1];
 		if (isLocalStorage) {
 			window.localStorage.removeItem(key);
+			window.localStorage.removeItem(noBagKey);
 		}
 	},
 	list: function() {
@@ -1160,6 +1162,7 @@ return function(tiddlerCallback, getCached) {
 	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
 			var tid;
+			cache.remove(tiddler);
 			cache.set(tiddler);
 			tid = $.extend( true, new tiddlyweb.Tiddler(), tiddler);
 			self.pending[tid.title] = resource(tid, true);
