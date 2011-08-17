@@ -89,7 +89,7 @@ Tiddlers.fn = {
 	// blank/true matches the current space, false matches everything else
 	space: function(name) {
 		var regex = /(_public|_private|_archive)$/,
-			current = undefined, spaceName;
+			current, spaceName;
 		if (name === true || name === undefined) {
 			current = true;
 		} else if (name === false) {
@@ -185,7 +185,6 @@ Tiddlers.fn = {
 		var set = {}, self = this,
 			result = Tiddlers(self.store);
 		$.each(this, function(i, tiddler) {
-			var oldBag, newBag, oldTiddler;
 			if (!set[tiddler.title]) {
 				set[tiddler.title] = tiddler;
 			} else if (!tiddler.lastSync) {

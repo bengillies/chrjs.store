@@ -9,7 +9,8 @@ var isLocalStorage = (function() {
 	}()),
 	// construct an ID for use in localStorage
 	getStorageID = function(tiddler) {
-		return encodeURIComponent(tiddler.bag.name) + '/' +
+		var bag = (tiddler.bag && tiddler.bag.name) || '';
+		return encodeURIComponent(bag) + '/' +
 			encodeURIComponent(tiddler.title);
 	};
 
@@ -54,7 +55,9 @@ return {
 					name = decodeURIComponent(names[1]);
 					tiddlerJSON = $.parseJSON(window.localStorage[key]);
 					tiddler = new tiddlyweb.Tiddler(name);
-					tiddler.bag = new tiddlyweb.Bag(bagName, '/');
+					if (bagName) {
+						tiddler.bag = new tiddlyweb.Bag(bagName, '/');
+					}
 					$.extend(tiddler, tiddlerJSON);
 					tiddlers.push(tiddler);
 				} catch(e) {

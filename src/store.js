@@ -223,10 +223,10 @@ return function(tiddlerCallback, getCached) {
 						return false;
 					}
 				});
-				return tiddler;
+				return (tiddler instanceof tiddlyweb.Tiddler) ? tiddler : null;
 			}());
 
-		if (!callback) {
+		if (!callback && tiddler) {
 			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
 		} else if (!server && pending) {
 			callback.call(self, $.extend(true, new tiddlyweb.Tiddler(),
@@ -241,11 +241,13 @@ return function(tiddlerCallback, getCached) {
 					message: 'Error getting tiddler: ' + errMsg
 				}, xhr);
 			}, (render) ? 'render=1' : '');
-		} else {
+		} else if (callback) {
 			callback.call(null, {
 				name: 'NotFoundError',
 				message: 'Tiddler not found'
 			});
+		} else {
+			return null;
 		}
 
 		return self;
@@ -295,10 +297,14 @@ return function(tiddlerCallback, getCached) {
 			cache.set(tiddler);
 			tid = $.extend( true, new tiddlyweb.Tiddler(), tiddler);
 			self.pending[tid.title] = resource(tid, true);
-			self.trigger('tiddler', tid.title, tid);
+			if (tiddler.bag) {
+				self.trigger('tiddler', tid.title, tid);
+			}
 		};
 
 		if (!tiddler.bag) {
+			// save locally without a bag, and add the bag ASAP
+			saveLocal(tiddler);
 			self.getSpace(function(space) {
 				var bagName = space.name + '_public';
 				tiddler.bag = (store[bagName] && store[bagName].thing) ||
@@ -320,6 +326,14 @@ return function(tiddlerCallback, getCached) {
 			// do the actual saving bit
 			saveTiddler = function(tiddler, callback) {
 				delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
+				if (!tiddler.bag) {
+					self.getSpace(function(space) {
+						tiddler.bag = new tiddlyweb.Bag(space.name + '_public',
+							'/');
+						saveTiddler(tiddler, callback);
+						return;
+					});
+				}
 				tiddler.put(function(response) {
 					cache.remove(tiddler);
 					response = resource(response);
@@ -383,7 +397,8 @@ return function(tiddlerCallback, getCached) {
 				delete self.pending[options.tiddler.title];
 				cache.remove(options.tiddler);
 			}
-			if (options.server) {
+			if (options.server && (options.tiddler.bag ||
+					options.tiddler.recipe)) {
 				options.tiddler['delete'](function(tiddler) {
 					if (store[tiddler.bag.name]) {
 						delete store[tiddler.bag.name].tiddlers[tiddler.title];

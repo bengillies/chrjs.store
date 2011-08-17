@@ -555,7 +555,7 @@ Tiddlers.fn = {
 	// blank/true matches the current space, false matches everything else
 	space: function(name) {
 		var regex = /(_public|_private|_archive)$/,
-			current = undefined, spaceName;
+			current, spaceName;
 		if (name === true || name === undefined) {
 			current = true;
 		} else if (name === false) {
@@ -651,7 +651,6 @@ Tiddlers.fn = {
 		var set = {}, self = this,
 			result = Tiddlers(self.store);
 		$.each(this, function(i, tiddler) {
-			var oldBag, newBag, oldTiddler;
 			if (!set[tiddler.title]) {
 				set[tiddler.title] = tiddler;
 			} else if (!tiddler.lastSync) {
@@ -799,7 +798,8 @@ var isLocalStorage = (function() {
 	}()),
 	// construct an ID for use in localStorage
 	getStorageID = function(tiddler) {
-		return encodeURIComponent(tiddler.bag.name) + '/' +
+		var bag = (tiddler.bag && tiddler.bag.name) || '';
+		return encodeURIComponent(bag) + '/' +
 			encodeURIComponent(tiddler.title);
 	};
 
@@ -844,7 +844,9 @@ return {
 					name = decodeURIComponent(names[1]);
 					tiddlerJSON = $.parseJSON(window.localStorage[key]);
 					tiddler = new tiddlyweb.Tiddler(name);
-					tiddler.bag = new tiddlyweb.Bag(bagName, '/');
+					if (bagName) {
+						tiddler.bag = new tiddlyweb.Bag(bagName, '/');
+					}
 					$.extend(tiddler, tiddlerJSON);
 					tiddlers.push(tiddler);
 				} catch(e) {
@@ -1087,10 +1089,10 @@ return function(tiddlerCallback, getCached) {
 						return false;
 					}
 				});
-				return tiddler;
+				return (tiddler instanceof tiddlyweb.Tiddler) ? tiddler : null;
 			}());
 
-		if (!callback) {
+		if (!callback && tiddler) {
 			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
 		} else if (!server && pending) {
 			callback.call(self, $.extend(true, new tiddlyweb.Tiddler(),
@@ -1105,11 +1107,13 @@ return function(tiddlerCallback, getCached) {
 					message: 'Error getting tiddler: ' + errMsg
 				}, xhr);
 			}, (render) ? 'render=1' : '');
-		} else {
+		} else if (callback) {
 			callback.call(null, {
 				name: 'NotFoundError',
 				message: 'Tiddler not found'
 			});
+		} else {
+			return null;
 		}
 
 		return self;
@@ -1159,10 +1163,14 @@ return function(tiddlerCallback, getCached) {
 			cache.set(tiddler);
 			tid = $.extend( true, new tiddlyweb.Tiddler(), tiddler);
 			self.pending[tid.title] = resource(tid, true);
-			self.trigger('tiddler', tid.title, tid);
+			if (tiddler.bag) {
+				self.trigger('tiddler', tid.title, tid);
+			}
 		};
 
 		if (!tiddler.bag) {
+			// save locally without a bag, and add the bag ASAP
+			saveLocal(tiddler);
 			self.getSpace(function(space) {
 				var bagName = space.name + '_public';
 				tiddler.bag = (store[bagName] && store[bagName].thing) ||
@@ -1184,6 +1192,14 @@ return function(tiddlerCallback, getCached) {
 			// do the actual saving bit
 			saveTiddler = function(tiddler, callback) {
 				delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
+				if (!tiddler.bag) {
+					self.getSpace(function(space) {
+						tiddler.bag = new tiddlyweb.Bag(space.name + '_public',
+							'/');
+						saveTiddler(tiddler, callback);
+						return;
+					});
+				}
 				tiddler.put(function(response) {
 					cache.remove(tiddler);
 					response = resource(response);
@@ -1247,7 +1263,8 @@ return function(tiddlerCallback, getCached) {
 				delete self.pending[options.tiddler.title];
 				cache.remove(options.tiddler);
 			}
-			if (options.server) {
+			if (options.server && (options.tiddler.bag ||
+					options.tiddler.recipe)) {
 				options.tiddler['delete'](function(tiddler) {
 					if (store[tiddler.bag.name]) {
 						delete store[tiddler.bag.name].tiddlers[tiddler.title];
