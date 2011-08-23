@@ -332,12 +332,11 @@ return function(tiddlerCallback, getCached) {
 						tiddler.bag = new tiddlyweb.Bag(space.name + '_public',
 							'/');
 						saveTiddler(tiddler, callback);
-						return;
 					});
+					return;
 				}
 				tiddler.put(function(response) {
 					cache.remove(tiddler);
-					response = resource(response);
 					replace(response);
 					callback(response);
 				}, function(xhr, err, errMsg) {
