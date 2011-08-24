@@ -1,4 +1,4 @@
-define(['filter', 'event', 'cache'], function(filter, events, cache) {
+define(['filter', 'event', 'cache', 'localStore'], function(filter, events, cache, localStore) {
 
 return function(tiddlerCallback, getCached) {
 	if (getCached === undefined) {
@@ -13,80 +13,33 @@ return function(tiddlerCallback, getCached) {
 		},
 		// setup the bind/unbind module
 		ev = events(),
-		// format bags or tiddlers suitable for storing
-		resource = function(thing, isLocal) {
-			var obj;
-			if (thing instanceof tiddlyweb.Bag) {
-				obj = {
-					thing: thing, // bag object
-					tiddlers: {}
-				};
-			} else {
-				thing.lastSync = (!isLocal) ? new Date() : null;
-				obj = thing;
-			}
-
-			return obj;
-		},
-		store = {},
+		// set up the local store object
+		store = localStore(),
 		// remove items from the store that have already been deleted on the server
 		removeDeleted = function(container, tiddlers) {
-			var storeTids, newTiddlers = filter(self, tiddlers),
-				deleted = [];
-			newTiddlers = newTiddlers.map(function(tiddler) {
+			var newTiddlers = filter(self, tiddlers).map(function(tiddler) {
 				return tiddler.title;
 			});
 
-			if (container instanceof tiddlyweb.Bag) {
-				storeTids = store[container.name].tiddlers;
-				$.each(storeTids, function(title, tiddler) {
-					if (newTiddlers.indexOf(tiddler.title) === -1) {
-						deleted.push([container.name, title]);
-					}
-				});
-			} else if (container instanceof tiddlyweb.Recipe) {
-				self.each(function(tiddler, title) {
-					if ((tiddler.recipe &&
-							tiddler.recipe.name === container.name) &&
-							(newTiddlers.indexOf(tiddler.title) === -1)) {
-						deleted.push([tiddler.bag.name, title]);
-					}
-				});
-			}
-			// deleted now contains everything tht has been deleted
-			$.each(deleted, function(i, toDelete) {
-				var title = toDelete[1], bag = toDelete[0],
-					tiddler = store[bag].tiddlers[title];
-				delete store[bag].tiddlers[title];
-				self.trigger('tiddler', title, [tiddler, 'deleted']);
+			self.each(function(tiddler, title) {
+				if ((tiddler.recipe &&
+						tiddler.recipe.name === container.name) &&
+						(newTiddlers.indexOf(tiddler.title) === -1)) {
+					store.remove(tiddler);
+					self.trigger('tiddler', title, [tiddler, 'deleted']);
+				}
 			});
 		},
 		replace;
 	// add/replace the thing in the store object with the thing passed in.
 	// different to add, which only adds to pending
-	replace = function(thing) {
-		if (thing instanceof tiddlyweb.Bag) {
-			if (store[thing.name]) {
-				store[thing.name].thing = thing;
-			} else {
-				store[thing.name] = resource(thing);
-			}
-			self.trigger('bag', thing.name, thing);
-			return true;
-		} else {
-			// add the tiddler to the appropriate place in the store. If it comes with a new bag, add that as well
-			var bagName = thing.bag.name,
-				oldBag = (!store[bagName]) ? !replace(new tiddlyweb.Bag(bagName,
-					'/')) : store[bagName],
-				oldRevision = (!oldBag ||
-					!oldBag.tiddlers[thing.title]) ? null :
-					oldBag.tiddlers[thing.title].revision;
-			store[bagName].tiddlers[thing.title] = resource(thing);
-			if (thing.revision !== oldRevision) {
-				self.trigger('tiddler', thing.title, thing);
-			}
-			return true;
+	replace = function(tiddler) {
+		var oldTid = store.get(tiddler);
+		store.set(tiddler);
+		if (oldTid && oldTid.revision !== tiddler.revision) {
+			self.trigger('tiddler', tiddler.title, tiddler);
 		}
+		return true;
 	};
 
 	// public variables
@@ -253,37 +206,19 @@ return function(tiddlerCallback, getCached) {
 		return self;
 	};
 
-	// loops over every thing (tiddler (default) or bag) and calls callback with them
-	self.each = function(thing, cllbck) {
-		var callback = (typeof thing === 'function') ? thing : cllbck,
-			loopTiddlers = (thing === 'bag') ? false : true,
-			loopOver = function(list, callback) {
-				var finished = true, name;
-				for (name in list) {
-					if (list.hasOwnProperty(name)) {
-						if (callback(list[name], name) === false) {
-							finished = false;
-							break;
-						}
-					}
-				}
-				return finished;
-			};
-		// loop over pending first
-		if (loopTiddlers && !loopOver(self.pending, callback)) {
-			return self;
-		}
-		loopOver(store, function(bag, bagName) {
-			if (loopTiddlers) {
-				if (!loopOver(store[bagName].tiddlers, callback)) {
-					return false;
-				}
-			} else {
-				if (callback(bag.thing, bagName) === false) {
-					return false;
-				}
-			}
+	// loops over every tiddler and calls callback with them
+	self.each = function(callback) {
+		var continueLoop = true;
+		$.each(self.pending, function(title, tiddler) {
+			continueLoop = callback(tiddler, title);
+			return continueLoop;
 		});
+
+		if (continueLoop || typeof continueLoop === 'undefined') {
+			$.each(store.list(), function(i, tiddler) {
+				return callback(tiddler, tiddler.title);
+			});
+		}
 
 		return self;
 	};
@@ -297,7 +232,8 @@ return function(tiddlerCallback, getCached) {
 			cache.remove(tiddler);
 			cache.set(tiddler);
 			tid = $.extend( true, new tiddlyweb.Tiddler(), tiddler);
-			self.pending[tid.title] = resource(tid, true);
+			tid.lastSync = null;
+			self.pending[tid.title] = tid;
 			if (tiddler.bag) {
 				self.trigger('tiddler', tid.title, tid);
 			}
@@ -308,8 +244,7 @@ return function(tiddlerCallback, getCached) {
 			saveLocal(tiddler);
 			self.getSpace(function(space) {
 				var bagName = space.name + '_public';
-				tiddler.bag = (store[bagName] && store[bagName].thing) ||
-					new tiddlyweb.Bag(bagName, '/');
+				tiddler.bag = new tiddlyweb.Bag(bagName, '/');
 				saveLocal(tiddler);
 			});
 		} else {
@@ -342,7 +277,8 @@ return function(tiddlerCallback, getCached) {
 				}, function(xhr, err, errMsg) {
 					if (!self.pending[tiddler.title]) {
 						// there was an error, so put it back (if it hasn't already been replaced)
-						self.pending[tiddler.title] = resource(tiddler, true);
+						tiddler.lastSync = null;
+						self.pending[tiddler.title] = tiddler;
 					}
 					callback(null, {
 						name: 'SaveError',
@@ -400,9 +336,7 @@ return function(tiddlerCallback, getCached) {
 			if (options.server && (options.tiddler.bag ||
 					options.tiddler.recipe)) {
 				options.tiddler['delete'](function(tiddler) {
-					if (store[tiddler.bag.name]) {
-						delete store[tiddler.bag.name].tiddlers[tiddler.title];
-					}
+					store.remove(tiddler);
 					self.trigger('tiddler', tiddler.title, [tiddler, 'deleted']);
 					options.callback(tiddler);
 				}, function(xhr, err, errMsg) {
