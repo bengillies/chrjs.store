@@ -871,30 +871,38 @@ return {
  */
 
 define('localStore',['require','exports','module'],function() {
-	return function() {
+	return function(options) {
 		var store = {},
 			bagList = [];
 
+		var addLastSync = (options.addLastSync !== undefined) ?
+			options.addLastSync : true;
+
 		// returns a unique key to be used for getting/setting tiddlers directly
 		var createKey = function(tiddler) {
-			var bag = tiddler.bag;
+			var bag = tiddler.bag || '';
 			return encodeURIComponent(bag.name) + '/' +
 				encodeURIComponent(tiddler.title);
+		};
+
+		// make a deep copy of a tiddler
+		var makeCopy = function(tiddler) {
+			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
 		};
 
 		// returns a tiddler
 		// if bag is not present, search through bags until we find a match
 		var get = function(tiddler) {
-			var match;
-			if (tiddler.bag) {
-				return store[createKey(tiddler)];
+			var match = store[createKey(tiddler)];;
+			if (match) {
+				return makeCopy(match);
 			} else {
 				for (var i = 0, l = bagList.length; i < l; i++) {
 					tiddler.bag = bagList[i];
 					match = store[createKey(tiddler)];
 					if (match) {
 						tiddler.bag = undefined;
-						return match;
+						return makeCopy(match);
 					}
 				}
 			}
@@ -903,11 +911,20 @@ define('localStore',['require','exports','module'],function() {
 
 		// set a tiddler
 		var set = function(tiddler) {
-			if (!bagList[tiddler.bag.name]) {
-				bagList[tiddler.bag.name] = tiddler.bag;
+			var bags = $.map(bagList, function(i, bag) {
+				return bag.name;
+			});
+
+			// remove any bagless duplication
+			delete store[createKey(new tiddlyweb.Tiddler(tiddler.title))];
+
+			// add any previously unseen bags
+			if (tiddler.bag && !~bags.indexOf(tiddler.bag.name)) {
+				bagList.push(tiddler.bag);
 			}
-			tiddler.lastSync = new Date();
-			store[createKey(tiddler)] = tiddler;
+
+			tiddler.lastSync = (addLastSync) ? new Date() : null;
+			store[createKey(tiddler)] = makeCopy(tiddler);
 		};
 
 		// remove a tiddler
@@ -958,8 +975,9 @@ return function(tiddlerCallback, getCached) {
 		},
 		// setup the bind/unbind module
 		ev = events(),
-		// set up the local store object
-		store = localStore(),
+		// set up the local store objects
+		store = localStore({ addLastSync: true }),
+		modified = localStore({ addLastSync: false }),
 		// remove items from the store that have already been deleted on the server
 		removeDeleted = function(container, tiddlers) {
 			var newTiddlers = filter(self, tiddlers).map(function(tiddler) {
@@ -1006,15 +1024,9 @@ return function(tiddlerCallback, getCached) {
 			allTiddlers = allTiddlers.attr(name, match);
 		}
 
-		// create new copies so any modifications do not affect the original
-		allTiddlers = allTiddlers.map(function(tiddler) {
-			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
-		});
-
 		return allTiddlers;
 	};
 	self.recipe = null;
-	self.pending = {};
 
 	// public functions
 
@@ -1109,7 +1121,8 @@ return function(tiddlerCallback, getCached) {
 	// returns pending first, then in recipe order (ie last bag first) if > 1 exist
 	// render sets the render=1 flag on the GET request, server forces the function to return the server version
 	self.get = function(tid, callback, render, server) {
-		var pending = self.pending[tid] || self.pending[tid.title] || null,
+		var pending = ((tid instanceof tiddlyweb.Tiddler) ? modified.get(tid) :
+				modified.get(new tiddlyweb.Tiddler(tid))) || null,
 			tiddler = (function() {
 				var tiddler = (!server && pending) ? pending : tid;
 				if (tiddler instanceof tiddlyweb.Tiddler) {
@@ -1125,14 +1138,13 @@ return function(tiddlerCallback, getCached) {
 			}());
 
 		if (!callback && tiddler) {
-			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
+			return tiddler;
 		} else if (!server && pending) {
-			callback.call(self, $.extend(true, new tiddlyweb.Tiddler(),
-				tiddler));
+			callback.call(self, tiddler);
 		} else if (tiddler) {
 			tiddler.get(function(t) {
 				replace(t);
-				callback.call(self, $.extend(true, new tiddlyweb.Tiddler(), t));
+				callback.call(self, t);
 			}, function(xhr, err, errMsg) {
 				callback.call(self, null, {
 					name: 'RetrieveTiddlersError',
@@ -1154,7 +1166,7 @@ return function(tiddlerCallback, getCached) {
 	// loops over every tiddler and calls callback with them
 	self.each = function(callback) {
 		var continueLoop = true;
-		$.each(self.pending, function(title, tiddler) {
+		$.each(modified.list(), function(title, tiddler) {
 			continueLoop = callback(tiddler, title);
 			return continueLoop;
 		});
@@ -1173,14 +1185,11 @@ return function(tiddlerCallback, getCached) {
 	// if tiddler already in store[bag], will remove until saved to server
 	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
-			var tid;
 			cache.remove(tiddler);
 			cache.set(tiddler);
-			tid = $.extend( true, new tiddlyweb.Tiddler(), tiddler);
-			tid.lastSync = null;
-			self.pending[tid.title] = tid;
+			modified.set(tiddler);
 			if (tiddler.bag) {
-				self.trigger('tiddler', tid.title, tid);
+				self.trigger('tiddler', tiddler.title, tiddler);
 			}
 		};
 
@@ -1206,7 +1215,7 @@ return function(tiddlerCallback, getCached) {
 			callback = (!isTiddler && tiddler) ? tiddler : cllbck,
 			// do the actual saving bit
 			saveTiddler = function(tiddler, callback) {
-				delete self.pending[tiddler.title]; // delete now so that changes made during save are kept
+				modified.remove(tiddler); // delete now so that changes made during save are kept
 				if (!tiddler.bag) {
 					self.getSpace(function(space) {
 						tiddler.bag = new tiddlyweb.Bag(space.name + '_public',
@@ -1220,10 +1229,9 @@ return function(tiddlerCallback, getCached) {
 					replace(response);
 					callback(response);
 				}, function(xhr, err, errMsg) {
-					if (!self.pending[tiddler.title]) {
+					if (!modified.get(tiddler)) {
 						// there was an error, so put it back (if it hasn't already been replaced)
-						tiddler.lastSync = null;
-						self.pending[tiddler.title] = tiddler;
+						modified.set(tiddler);
 					}
 					callback(null, {
 						name: 'SaveError',
@@ -1237,7 +1245,7 @@ return function(tiddlerCallback, getCached) {
 			return self;
 		}
 
-		$.each(self.pending, function(i, tiddler) {
+		$.each(modified.list(), function(i, tiddler) {
 			if (empty) {
 				empty = false;
 			}
@@ -1275,7 +1283,7 @@ return function(tiddlerCallback, getCached) {
 			return self;
 		} else {
 			if (options.pending) {
-				delete self.pending[options.tiddler.title];
+				modified.remove(options.tiddler);
 				cache.remove(options.tiddler);
 			}
 			if (options.server && (options.tiddler.bag ||
@@ -1308,14 +1316,11 @@ return function(tiddlerCallback, getCached) {
 	self.search = function(query, callback) {
 		var searchObj = new tiddlyweb.Search(query, '/');
 		searchObj.get(function(tiddlers) {
-			var safeCollection = [];
 			$.each(tiddlers, function(i, tiddler) {
-				replace(tiddler);
-				safeCollection.push($.extend(true, new tiddlyweb.Tiddler(),
-					tiddler));
+				store.set(tiddler);
 			});
 
-			callback(safeCollection);
+			callback(tiddlers);
 		}, function(xhr, err, errMsg) {
 			callback(null, {
 				name: 'SearchError',

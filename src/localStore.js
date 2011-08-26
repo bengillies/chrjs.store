@@ -3,30 +3,38 @@
  */
 
 define(function() {
-	return function() {
+	return function(options) {
 		var store = {},
 			bagList = [];
 
+		var addLastSync = (options.addLastSync !== undefined) ?
+			options.addLastSync : true;
+
 		// returns a unique key to be used for getting/setting tiddlers directly
 		var createKey = function(tiddler) {
-			var bag = tiddler.bag;
+			var bag = tiddler.bag || '';
 			return encodeURIComponent(bag.name) + '/' +
 				encodeURIComponent(tiddler.title);
+		};
+
+		// make a deep copy of a tiddler
+		var makeCopy = function(tiddler) {
+			return $.extend(true, new tiddlyweb.Tiddler(), tiddler);
 		};
 
 		// returns a tiddler
 		// if bag is not present, search through bags until we find a match
 		var get = function(tiddler) {
-			var match;
-			if (tiddler.bag) {
-				return store[createKey(tiddler)];
+			var match = store[createKey(tiddler)];;
+			if (match) {
+				return makeCopy(match);
 			} else {
 				for (var i = 0, l = bagList.length; i < l; i++) {
 					tiddler.bag = bagList[i];
 					match = store[createKey(tiddler)];
 					if (match) {
 						tiddler.bag = undefined;
-						return match;
+						return makeCopy(match);
 					}
 				}
 			}
@@ -35,11 +43,20 @@ define(function() {
 
 		// set a tiddler
 		var set = function(tiddler) {
-			if (!bagList[tiddler.bag.name]) {
-				bagList[tiddler.bag.name] = tiddler.bag;
+			var bags = $.map(bagList, function(i, bag) {
+				return bag.name;
+			});
+
+			// remove any bagless duplication
+			delete store[createKey(new tiddlyweb.Tiddler(tiddler.title))];
+
+			// add any previously unseen bags
+			if (tiddler.bag && !~bags.indexOf(tiddler.bag.name)) {
+				bagList.push(tiddler.bag);
 			}
-			tiddler.lastSync = new Date();
-			store[createKey(tiddler)] = tiddler;
+
+			tiddler.lastSync = (addLastSync) ? new Date() : null;
+			store[createKey(tiddler)] = makeCopy(tiddler);
 		};
 
 		// remove a tiddler
