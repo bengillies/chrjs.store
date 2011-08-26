@@ -1,18 +1,17 @@
-define(['filter', 'event', 'cache', 'localStore'], function(filter, events, cache, localStore) {
+define(['filter', 'event', 'cache', 'localStore', 'host'],
+	function(filter, events, cache, localStore, host) {
 
-return function(tiddlerCallback, getCached) {
+return function(tiddlerCallback, getCached, defaultContainers) {
 	if (getCached === undefined) {
 		getCached = true;
 	}
 
 	var self,
 		// private
-		space = {
-			name: '',
-			type: 'private' // private or public (aka r/w or read only)
-		},
 		// setup the bind/unbind module
 		ev = events(),
+		// set up the default locations to get/put stuff to/from
+		defaults = host(defaultContainers),
 		// set up the local store objects
 		store = localStore({ addLastSync: true }),
 		modified = localStore({ addLastSync: false }),
@@ -71,34 +70,14 @@ return function(tiddlerCallback, getCached) {
 	// let filter be extensible
 	self.fn = filter.fn;
 
-	// takes in a  callback. calls callback with space object containing name and type or error
-	self.getSpace = function(callback) {
-		if (space.name !== '') {
-			callback(space);
+	// takes in a callback. calls callback with an object consisting of:
+	// pullFrom: default location to refresh the store from
+	// pushTo: default location to save to
+	self.getDefaults = function(callback) {
+		if (callback) {
+			defaults.getDefault(callback);
 		} else {
-			$.ajax({
-				url: '/?limit=1', // get a tiddler from whatever is default
-				dataType: 'json',
-				success: function(data) {
-					var recipeName = ((data instanceof Array) ? data[0].recipe :
-							data.recipe) || 'No Recipe Found',
-						match = recipeName.match(/^(.*)_(private|public)$/);
-					if (match) {
-						space.name = match[1];
-						space.type = match[2];
-						self.recipe = new tiddlyweb.Recipe(recipeName, '/');
-						callback(space);
-					} else {
-						callback(null, {
-							name: 'NoSpaceMatchError',
-							message: data.recipe + ' is not a valid space'
-						});
-					}
-				},
-				error: function(xhr, txtStatus, err) {
-					callback(null, err, xhr);
-				}
-			});
+			return defaults.getDefault();
 		}
 
 		return self;
@@ -145,10 +124,8 @@ return function(tiddlerCallback, getCached) {
 		if (self.recipe) {
 			getTiddlersSkinny(self.recipe);
 		} else {
-			self.getSpace(function() {
-				if (self.recipe) {
-					getTiddlersSkinny(self.recipe);
-				}
+			self.getDefaults(function(containers) {
+				getTiddlersSkinny(containers.pullFrom);
 			});
 		}
 
@@ -219,7 +196,8 @@ return function(tiddlerCallback, getCached) {
 	};
 
 	// add a tiddler to the store. Adds to pending (and localStorage).  will add whether a tiddler exists or not. Won't save until save
-	// if bag is not present, will set bag to <space_name> + _public
+	// if bag is not present, will set bag to defaultContainer.pushTo
+	// (which defaults to public bag)
 	// if tiddler already in store[bag], will remove until saved to server
 	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
@@ -234,9 +212,8 @@ return function(tiddlerCallback, getCached) {
 		if (!tiddler.bag) {
 			// save locally without a bag, and add the bag ASAP
 			saveLocal(tiddler);
-			self.getSpace(function(space) {
-				var bagName = space.name + '_public';
-				tiddler.bag = new tiddlyweb.Bag(bagName, '/');
+			self.getDefaults(function(containers) {
+				tiddler.bag = containers.pushTo;
 				saveLocal(tiddler);
 			});
 		} else {
@@ -246,7 +223,7 @@ return function(tiddlerCallback, getCached) {
 		return self;
 	};
 
-	// save any tiddlers in the pending object back to the server, and remove them from pending.
+	// save any tiddlers in the pending object back to the server, and remove them from pending
 	// tiddler should be a tiddlyweb.Tiddler to save just that tiddler directly, or a callback to save all tiddlers in pending
 	self.save = function(tiddler, cllbck) {
 		var empty = true, isTiddler = (tiddler instanceof tiddlyweb.Tiddler),
@@ -255,9 +232,8 @@ return function(tiddlerCallback, getCached) {
 			saveTiddler = function(tiddler, callback) {
 				modified.remove(tiddler); // delete now so that changes made during save are kept
 				if (!tiddler.bag) {
-					self.getSpace(function(space) {
-						tiddler.bag = new tiddlyweb.Bag(space.name + '_public',
-							'/');
+					self.getDefaults(function(containers) {
+						tiddler.bag = containers.pushTo;
 						saveTiddler(tiddler, callback);
 					});
 					return;
@@ -352,18 +328,20 @@ return function(tiddlerCallback, getCached) {
 	// callback fires when the search returns.
 	// query is a string appended to the url as /search?q=<query>
 	self.search = function(query, callback) {
-		var searchObj = new tiddlyweb.Search(query, '/');
-		searchObj.get(function(tiddlers) {
-			$.each(tiddlers, function(i, tiddler) {
-				store.set(tiddler);
-			});
+		getDefaults(function(c) {
+			var searchObj = new tiddlyweb.Search(query, c.pullFrom.host);
+			searchObj.get(function(tiddlers) {
+				$.each(tiddlers, function(i, tiddler) {
+					store.set(tiddler);
+				});
 
-			callback(tiddlers);
-		}, function(xhr, err, errMsg) {
-			callback(null, {
-				name: 'SearchError',
-				message: 'Error retrieving tiddlers from search: ' + errMsg,
-			}, xhr);
+				callback(tiddlers);
+			}, function(xhr, err, errMsg) {
+				callback(null, {
+					name: 'SearchError',
+					message: 'Error retrieving tiddlers from search: ' + errMsg
+				}, xhr);
+			});
 		});
 
 		return self;

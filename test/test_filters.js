@@ -75,7 +75,7 @@ test('dirty filter', function() {
 
 test('space filter', function() {
 	var callbackRan = false;
-	ts.getSpace(function() {
+	ts.getDefaults(function() {
 		var tids = ts().space('cats');
 		strictEqual(tids.length, 1);
 		strictEqual(tids[0].bag.name, 'cats_public');
