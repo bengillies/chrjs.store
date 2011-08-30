@@ -200,8 +200,8 @@ Tiddlers.fn = {
 	// bind fn to the current set of matched tiddlers.
 	bind: function(fn) {
 		var self = this,
-			bindFunc = function(tiddler) {
-				fn.apply(self, [tiddler]);
+			bindFunc = function() {
+				fn.apply(self, arguments);
 			};
 		self.store.bind('filter', parser.createTester(self.ast), bindFunc);
 		return self;
