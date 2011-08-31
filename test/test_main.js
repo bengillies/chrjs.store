@@ -97,10 +97,12 @@ test('Retrieve tiddler from server, save locally, get locally', function() {
 	});
 });
 
-test('get space', function() {
-	ts.getSpace(function(space) {
-		strictEqual(space.name, 'foo');
-		strictEqual(space.type, 'public');
+test('get default containers', function() {
+	ts.getDefaults(function(containers) {
+		strictEqual(containers.pullFrom.name, 'foo_public');
+		strictEqual(containers.pullFrom instanceof tiddlyweb.Recipe, true);
+		strictEqual(containers.pushTo.name, 'foo_public');
+		strictEqual(containers.pushTo instanceof tiddlyweb.Bag, true);
 	});
 });
 
