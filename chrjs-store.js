@@ -808,7 +808,7 @@ return {
 	set: function(tiddler) {
 		var key = getStorageID(tiddler);
 		if (isLocalStorage) {
-			window.localStorage.setItem(key, tiddler.toJSON());
+			window.localStorage.setItem(key, JSON.stringify(tiddler.baseData()));
 		}
 	},
 	get: function(tiddler) {
