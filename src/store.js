@@ -33,9 +33,10 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		replace;
 	// add/replace the thing in the store object with the thing passed in.
 	// different to add, which only adds to pending
-	replace = function(tiddler) {
+	// storeObj is the store in which we want to replace the tiddler
+	replace = function(storeObj, tiddler) {
 		var oldTid = store.get(tiddler);
-		store.set(tiddler);
+		storeObj.set(tiddler);
 		if (oldTid && oldTid.revision !== tiddler.revision) {
 			self.trigger('tiddler', tiddler.title, tiddler);
 		}
@@ -107,7 +108,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			var tiddlerCollection = container.tiddlers();
 			tiddlerCollection.get(function(result) {
 				$.each(result, function(i, tiddler) {
-					replace(tiddler);
+					replace(store, tiddler);
 				});
 				removeDeleted(container, result);
 				if (callback) {
@@ -158,7 +159,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			callback.call(self, tiddler);
 		} else if (tiddler) {
 			tiddler.get(function(t) {
-				replace(t);
+				replace(store, t);
 				callback.call(self, t);
 			}, function(xhr, err, errMsg) {
 				callback.call(self, null, {
@@ -203,7 +204,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		var saveLocal = function(tiddler) {
 			cache.remove(tiddler);
 			cache.set(tiddler);
-			modified.set(tiddler);
+			replace(modified, tiddler);
 			if (tiddler.bag) {
 				self.trigger('tiddler', tiddler.title, tiddler);
 			}
@@ -240,12 +241,12 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 				}
 				tiddler.put(function(response) {
 					cache.remove(tiddler);
-					replace(response);
+					replace(store, response);
 					callback(response);
 				}, function(xhr, err, errMsg) {
 					if (!modified.get(tiddler)) {
 						// there was an error, so put it back (if it hasn't already been replaced)
-						modified.set(tiddler);
+						replace(modified, tiddler);
 					}
 					callback(null, {
 						name: 'SaveError',

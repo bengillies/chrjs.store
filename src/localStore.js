@@ -25,15 +25,16 @@ define(function() {
 		// returns a tiddler
 		// if bag is not present, search through bags until we find a match
 		var get = function(tiddler) {
-			var match = store[createKey(tiddler)];;
+			var match = store[createKey(tiddler)],
+				tidTester;
 			if (match) {
 				return makeCopy(match);
-			} else {
+			} else if (!tiddler.bag) {
+				tidTester = $.extend(new tiddlyweb.Tiddler(), tiddler);
 				for (var i = 0, l = bagList.length; i < l; i++) {
 					tiddler.bag = bagList[i];
 					match = store[createKey(tiddler)];
 					if (match) {
-						tiddler.bag = undefined;
 						return makeCopy(match);
 					}
 				}
