@@ -2,13 +2,15 @@
  * Store tiddlers in a local object
  */
 
-define(function() {
+define(['cache'], function(cache) {
 	return function(options) {
 		var store = {},
 			bagList = [];
 
 		var addLastSync = (options.addLastSync !== undefined) ?
 			options.addLastSync : true;
+
+		var useCache = options.useCache;
 
 		// returns a unique key to be used for getting/setting tiddlers directly
 		var createKey = function(tiddler) {
@@ -49,7 +51,7 @@ define(function() {
 			});
 
 			// remove any bagless duplication
-			delete store[createKey(new tiddlyweb.Tiddler(tiddler.title))];
+			remove(new tiddlyweb.Tiddler(tiddler.title));
 
 			// add any previously unseen bags
 			if (tiddler.bag && !~bags.indexOf(tiddler.bag.name)) {
@@ -57,7 +59,12 @@ define(function() {
 			}
 
 			tiddler.lastSync = (addLastSync) ? new Date() : null;
-			store[createKey(tiddler)] = makeCopy(tiddler);
+			var key = createKey(tiddler);
+			store[key] = makeCopy(tiddler);
+
+			if (useCache) {
+				cache.set(key, tiddler);
+			}
 		};
 
 		// remove a tiddler
@@ -66,6 +73,9 @@ define(function() {
 				removed = store[key];
 
 			delete store[createKey(tiddler)];
+			if (useCache) {
+				cache.remove(key);
+			}
 
 			return removed;
 		};

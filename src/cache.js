@@ -6,40 +6,29 @@ var isLocalStorage = (function() {
 		} catch(e) {
 			return false;
 		}
-	}()),
-	// construct an ID for use in localStorage
-	getStorageID = function(tiddler) {
-		var bag = (tiddler.bag && tiddler.bag.name) || '';
-		return encodeURIComponent(bag) + '/' +
-			encodeURIComponent(tiddler.title);
-	};
+	}());
 
 return {
 	isCaching: isLocalStorage,
-	set: function(tiddler) {
-		var key = getStorageID(tiddler);
+	set: function(key, tiddler) {
 		if (isLocalStorage) {
 			window.localStorage.setItem(key, JSON.stringify(tiddler.baseData()));
 		}
 	},
-	get: function(tiddler) {
-		var key = getStorageID(tiddler), result, tidJSON;
+	get: function(key, tiddler) {
+		var result, tidJSON;
 		if (isLocalStorage) {
-			result = window.localStorage[key];
-			tidJSON = $.parseJSON(result);
+			tidJSON = window.localStorage[key];
 			result = new tiddlyweb.Tiddler(tiddler.title);
+			result = result.parse(JSON.parse(tidJSON));
 			result.bag = tiddler.bag;
-			$.extend(result, tidJSON);
 			return result;
 		}
 		return null;
 	},
-	remove: function(tiddler) {
-		var key = getStorageID(tiddler),
-			noBagKey = '/' + key.split('/')[1];
+	remove: function(key) {
 		if (isLocalStorage) {
 			window.localStorage.removeItem(key);
-			window.localStorage.removeItem(noBagKey);
 		}
 	},
 	list: function() {
@@ -55,12 +44,12 @@ return {
 					}
 					bagName = decodeURIComponent(names[0]);
 					name = decodeURIComponent(names[1]);
-					tiddlerJSON = $.parseJSON(window.localStorage[key]);
+					tiddlerJSON = JSON.parse(window.localStorage[key]);
 					tiddler = new tiddlyweb.Tiddler(name);
+					tiddler = tiddler.parse(tiddlerJSON);
 					if (bagName) {
 						tiddler.bag = new tiddlyweb.Bag(bagName, '/');
 					}
-					$.extend(tiddler, tiddlerJSON);
 					tiddlers.push(tiddler);
 				} catch(e) {
 					// not a chrjs-store cached tiddler

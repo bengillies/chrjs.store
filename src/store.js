@@ -14,7 +14,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		defaults = host(defaultContainers),
 		// set up the local store objects
 		store = localStore({ addLastSync: true }),
-		modified = localStore({ addLastSync: false }),
+		modified = localStore({ addLastSync: false, useCache: true }),
 		// remove items from the store that have already been deleted on the server
 		removeDeleted = function(container, tiddlers) {
 			var newTiddlers = filter(self, tiddlers).map(function(tiddler) {
@@ -30,15 +30,59 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 				}
 			});
 		},
+		// compare 2 objects (usually tiddlers) and return true if they are the same
+		// note that we only care about certain properties (e.g. we don't compare functions)
+		isEqual = function(tid1, tid2) {
+			for (name in tid1) {
+				switch(typeof tid1[name]) {
+					case 'object':
+						if (!isEqual(tid1[name], tid2[name])) {
+							return false;
+						}
+						break;
+					case 'function':
+						break;
+					default:
+						if (tid1[name] !== tid2[name]) {
+							return false;
+						}
+						break;
+				}
+			}
+
+			for (name in tid2) {
+				if (typeof tid1[name] === 'undefined' &&
+						typeof tid2[name] !== 'undefined') {
+					return false;
+				}
+			}
+
+			return true;
+		},
 		replace;
 	// add/replace the thing in the store object with the thing passed in.
 	// different to add, which only adds to pending
 	// storeObj is the store in which we want to replace the tiddler
 	replace = function(storeObj, tiddler) {
-		var oldTid = store.get(tiddler);
+		var oldTid = storeObj.get(tiddler), syncedDiff, unsyncedDiff;
+
+		syncedDiff = function() {
+			return (oldTid && oldTid.lastSync &&
+				oldTid.revision !== tiddler.revision);
+		};
+		unsyncedDiff = function() {
+			return (oldTid && !oldTid.lastSync && !isEqual(tiddler, oldTid));
+		};
+
 		storeObj.set(tiddler);
-		if (oldTid && oldTid.revision !== tiddler.revision) {
-			self.trigger('tiddler', tiddler.title, tiddler);
+		// check whether the tiddler is new/updated.
+		// it _is_ if it a) has a bag and no old tiddler to replace,
+		// b) has a bag, an old tiddler to replace, they are both synced, and the revision numbers are different
+		// c) has a bag, and old tiddler to replace, they are not synced, and they are different
+		if (tiddler.bag) {
+			if (!oldTid || syncedDiff() || unsyncedDiff()) {
+				self.trigger('tiddler', tiddler.title, tiddler);
+			}
 		}
 		return true;
 	};
@@ -75,6 +119,13 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// pullFrom: default location to refresh the store from
 	// pushTo: default location to save to
 	self.getDefaults = function(callback) {
+		if (!self.recipe) {
+			//populate self.recipe the first time we call it
+			defaults.getDefault(function(containers) {
+				self.recipe = containers.pullFrom;
+			});
+		}
+
 		if (callback) {
 			defaults.getDefault(callback);
 		} else {
@@ -202,12 +253,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// if tiddler already in store[bag], will remove until saved to server
 	self.add = function(tiddler) {
 		var saveLocal = function(tiddler) {
-			cache.remove(tiddler);
-			cache.set(tiddler);
 			replace(modified, tiddler);
-			if (tiddler.bag) {
-				self.trigger('tiddler', tiddler.title, tiddler);
-			}
 		};
 
 		if (!tiddler.bag) {
@@ -231,7 +277,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			callback = (!isTiddler && tiddler) ? tiddler : cllbck,
 			// do the actual saving bit
 			saveTiddler = function(tiddler, callback) {
-				modified.remove(tiddler); // delete now so that changes made during save are kept
+				var preSave = modified.get(tiddler);
 				if (!tiddler.bag) {
 					self.getDefaults(function(containers) {
 						tiddler.bag = containers.pushTo;
@@ -240,11 +286,15 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					return;
 				}
 				tiddler.put(function(response) {
-					cache.remove(tiddler);
+					if (isEqual(tiddler, modified.get(tiddler))) {
+						modified.remove(tiddler);
+					}
 					replace(store, response);
 					callback(response);
 				}, function(xhr, err, errMsg) {
-					if (!modified.get(tiddler)) {
+					var currModified = modified.get(tiddler);
+					if (!currModified || (!isEqual(preSave, tiddler) &&
+							isEqual(preSave, currModified))) {
 						// there was an error, so put it back (if it hasn't already been replaced)
 						replace(modified, tiddler);
 					}
@@ -299,7 +349,6 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		} else {
 			if (options.pending) {
 				modified.remove(options.tiddler);
-				cache.remove(options.tiddler);
 			}
 			if (options.server && (options.tiddler.bag ||
 					options.tiddler.recipe)) {

@@ -170,8 +170,8 @@ module('localStorage used for non store things', {
 	setup: function() {
 		ts = tiddlyweb.Store(null, false); // don't load from localStorage
 		localStorage.clear();
-		localStorage.setItem("bag/tiddler", '{"title":"foo", "text":"bar", "text":"", "fields":{}}');
-		localStorage.setItem("tiddler", '{"title":"tiddler", "text":"bar", "text":"", "fields":{}}');
+		localStorage.setItem("bag/foo", '{"title":"foo", "text":"bar", "fields":{}}');
+		localStorage.setItem("tiddler", '{"title":"tiddler", "text":"bar", "fields":{}}');
 		localStorage.setItem("bar/bar", "a string");
 		localStorage.setItem("bar", "a string with no concept of bag");
 	},
