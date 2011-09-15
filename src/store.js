@@ -286,7 +286,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					return;
 				}
 				tiddler.put(function(response) {
-					if (isEqual(tiddler, modified.get(tiddler))) {
+					if (isEqual(preSave, modified.get(tiddler))) {
 						modified.remove(tiddler);
 					}
 					replace(store, response);
@@ -385,7 +385,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					store.set(tiddler);
 				});
 
-				callback(filter(self, tiddlers);
+				callback(filter(self, tiddlers));
 			}, function(xhr, err, errMsg) {
 				callback(null, {
 					name: 'SearchError',

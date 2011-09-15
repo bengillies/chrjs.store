@@ -62,6 +62,13 @@ test('Save Tiddlers', function() {
 		count--;
 	});
 	strictEqual(count, 0);
+
+	var tid = new tiddlyweb.Tiddler('foo', new tiddlyweb.Bag('bar', '/'));
+	var s = tiddlyweb.Store(null, false);
+	s.add(tid);
+	strictEqual(s().dirty().length, 1, 'The new tiddler is dirty');
+	s.save(tid, function() { });
+	strictEqual(s().dirty().length, 0, 'The new tiddler has been saved');
 });
 
 test('Retrieve tiddler (from cache)', function() {
