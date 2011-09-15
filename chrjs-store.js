@@ -941,7 +941,7 @@ define('localStore',['cache'], function(cache) {
 		var list = function() {
 			var results = [];
 			$.each(store, function(key, tiddler) {
-				results.push(tiddler);
+				results.push(makeCopy(tiddler));
 			});
 			return results;
 		}
@@ -1215,7 +1215,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 				});
 				removeDeleted(container, result);
 				if (callback) {
-					callback.apply(self, [result]);
+					callback.call(self, filter(self, result));
 				}
 			}, function(xhr, err, errMsg) {
 				callback(null, {
@@ -1338,7 +1338,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					return;
 				}
 				tiddler.put(function(response) {
-					if (isEqual(tiddler, modified.get(tiddler))) {
+					if (isEqual(preSave, modified.get(tiddler))) {
 						modified.remove(tiddler);
 					}
 					replace(store, response);
@@ -1347,7 +1347,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					var currModified = modified.get(tiddler);
 					if (!currModified || (!isEqual(preSave, tiddler) &&
 							isEqual(preSave, currModified))) {
-						// there was an error, so put it back (if it hasn't already been replaced)
+						// put it back (if it hasn't already been replaced)
 						replace(modified, tiddler);
 					}
 					callback(null, {
@@ -1430,14 +1430,14 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// callback fires when the search returns.
 	// query is a string appended to the url as /search?q=<query>
 	self.search = function(query, callback) {
-		getDefaults(function(c) {
+		self.getDefaults(function(c) {
 			var searchObj = new tiddlyweb.Search(query, c.pullFrom.host);
 			searchObj.get(function(tiddlers) {
 				$.each(tiddlers, function(i, tiddler) {
 					store.set(tiddler);
 				});
 
-				callback(tiddlers);
+				callback(filter(self, tiddlers));
 			}, function(xhr, err, errMsg) {
 				callback(null, {
 					name: 'SearchError',
