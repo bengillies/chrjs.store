@@ -84,7 +84,7 @@ define(['cache'], function(cache) {
 		var list = function() {
 			var results = [];
 			$.each(store, function(key, tiddler) {
-				results.push(tiddler);
+				results.push(makeCopy(tiddler));
 			});
 			return results;
 		}
