@@ -163,7 +163,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 				});
 				removeDeleted(container, result);
 				if (callback) {
-					callback.apply(self, [result]);
+					callback.call(self, filter(self, result));
 				}
 			}, function(xhr, err, errMsg) {
 				callback(null, {
@@ -295,7 +295,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					var currModified = modified.get(tiddler);
 					if (!currModified || (!isEqual(preSave, tiddler) &&
 							isEqual(preSave, currModified))) {
-						// there was an error, so put it back (if it hasn't already been replaced)
+						// put it back (if it hasn't already been replaced)
 						replace(modified, tiddler);
 					}
 					callback(null, {
@@ -385,7 +385,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					store.set(tiddler);
 				});
 
-				callback(tiddlers);
+				callback(filter(self, tiddlers);
 			}, function(xhr, err, errMsg) {
 				callback(null, {
 					name: 'SearchError',
