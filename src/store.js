@@ -378,7 +378,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// callback fires when the search returns.
 	// query is a string appended to the url as /search?q=<query>
 	self.search = function(query, callback) {
-		getDefaults(function(c) {
+		self.getDefaults(function(c) {
 			var searchObj = new tiddlyweb.Search(query, c.pullFrom.host);
 			searchObj.get(function(tiddlers) {
 				$.each(tiddlers, function(i, tiddler) {
