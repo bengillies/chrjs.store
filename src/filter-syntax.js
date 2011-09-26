@@ -31,7 +31,8 @@ var states = {
 		action: splitInner(1, Regexps.whitespace),
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (~tiddler.tags.indexOf(value)) ? true : false;
+				return (tiddler.tags && ~tiddler.tags.indexOf(value)) ?
+					true : false;
 			};
 		}
 	},
@@ -90,7 +91,8 @@ var states = {
 		action: splitInner(1, Regexps.doubleQuote),
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (~tiddler.text.indexOf(value)) ? true : false;
+				return (tiddler.text && ~tiddler.text.indexOf(value)) ?
+					true : false;
 			};
 		}
 	},

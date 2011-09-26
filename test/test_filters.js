@@ -275,3 +275,29 @@ test('brackets', function() {
 		matchingTiddlers.splice(isIn, 1);
 	});
 });
+
+test('empty tiddlers don\'t break', function() {
+	var tid = new tiddlyweb.Tiddler('a'),
+		noError = function(block, message) {
+			try {
+				block();
+			} catch(e) {
+				equal(true, false, message);
+			}
+		};
+
+	ts.add(tid);
+	noError(function() { ts('#tag'); }, 'undefined tags in filter syntax');
+	noError(function() { ts('@space'); }, 'undefined space in filter syntax');
+	noError(function() { ts('+modifier'); }, 'undefined modifier in filter syntax');
+	noError(function() { ts('[field=value]'); }, 'undefined fields in filter syntax');
+	noError(function() { ts('"text here"'); }, 'undefined text in filter syntax');
+
+	noError(function() { ts().tag('tag'); }, 'undefined tags');
+	noError(function() { ts().space(); }, 'undefined space');
+	noError(function() { ts().bag('foo'); }, 'undefined bag');
+	noError(function() { ts().recipe('foo'); }, 'undefined recipe');
+	noError(function() { ts().text('text'); }, 'undefined text');
+	noError(function() { ts().attr('field', 'value'); }, 'undefined fields');
+	noError(function() { ts().not('field', 'value'); }, 'undefined not-fields');
+});
