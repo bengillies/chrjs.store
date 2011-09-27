@@ -10,7 +10,7 @@ return function(container) {
 			(container instanceof tiddlyweb.Bag)) {
 		defaultContainer = {
 			pullFrom: container,
-			pushTo: Container
+			pushTo: container
 		};
 	} else if (container) {
 		defaultContainer = {
@@ -71,7 +71,7 @@ return function(container) {
 
 		if (defaultContainer) {
 			return returnContainer(defaultContainer);
-		} else {
+		} else if (callbackQueue.length === 0) {
 			determineContainer(function(container) {
 				defaultContainer = container;
 				returnContainer(container);
