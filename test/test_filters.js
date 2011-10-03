@@ -232,6 +232,13 @@ test('space', function() {
 	var tids = ts('@foo');
 	strictEqual(tids.length, 1);
 	strictEqual(tids[0].bag.name, 'foo_public');
+
+	strictEqual(ts('@foo-bar-baz').length, 0, 'No tiddlers from spaces-with-dashes');
+	ts.add(new tiddlyweb.Tiddler({
+		title: 'space with dashes',
+		bag: new tiddlyweb.Bag('foo-bar-baz_public', '/')
+	}));
+	strictEqual(ts('@foo-bar-baz').length, 1, 'One tiddler from spaces-with-dashes');
 });
 
 test('not', function() {

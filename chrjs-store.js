@@ -158,7 +158,7 @@ var splitInner = function(left, regex) {
 };
 
 var Regexps = {
-	whitespace: /((?:\W|,).*)/,
+	whitespace: /((?:\s|,).*)/,
 	doubleSquare: /\]\](.*)/,
 	doubleQuote: /"(.*)/
 };
