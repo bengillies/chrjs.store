@@ -145,6 +145,134 @@ Tiddlers.fn = {
 			});
 		}
 	},
+	// ord is, e.g. "tags, -title" (sorts by tags asc, then by title desc), or a function (defaults to Array.prototype.sort)
+	sort: function(ord) {
+		var sortOrder = (typeof ord === 'string') ? ord.split(/,\s*/) : null,
+			_sort = Array.prototype.sort;
+
+		if (sortOrder) {
+			return _sort.call(this, function(left, right) {
+				var result = 0;
+				$.each(sortOrder, function(i, field) {
+					var desc = (field.charAt(0) === '-') ? true : false,
+						name = (desc) ? field.splice(1) : field,
+						leftVal = left[name] ||
+							(left.fields && left.fields[name]) || null,
+						rightVal = right[name] ||
+							(right.fields && right.fields[name]) || null;
+
+					if (typeof leftVal === 'string') {
+						leftVal = leftVal.toLowerCase();
+					}
+					if (typeof rightVal === 'string') {
+						rightVal = rightVal.toLowerCase();
+					}
+
+					if (desc) {
+						result = (leftVal > rightVal) ? -1 :
+							((leftVal < rightVal) ? 1 : null);
+					} else {
+						result = (leftVal > rightVal) ? 1 :
+							((leftVal < rightVal) ? -1 : null);
+					}
+
+					if (result) {
+						return false;
+					}
+				});
+
+				return result;
+			});
+		} else {
+			return _sort.call(this, ord);
+		}
+	},
+	// return the first n tiddlers in the list
+	limit: function(n) {
+		var newList = Tiddlers(this.store),
+			i, l;
+		for (i = 0, l = this.length; i < n && i < l; i++) {
+			newList.push(this[i]);
+		}
+		return newList;
+	},
+	// return tiddlers that are tagged by the the tiddlers in the list and match filter
+	// i.e. the tiddlers in the list have a tag that equals the parent's tiddler title
+	parents: function(filter) {
+		var parentList = Tiddlers(this.store),
+			self = this;
+
+		this.each(function(tiddler) {
+			$.each(tiddler.tags, function(i, tag) {
+				var parent = self.store.get(tag);
+				if (parent) {
+					parentList.push(parent);
+				}
+			});
+		});
+
+		return parentList.find(filter);
+	},
+	// return tiddlers that have tags that equal the title of a tiddler in the list and pass the filter
+	children: function(filter) {
+		var self = this,
+			tagList = self.map(function(tiddler) {
+				return tiddler.title;
+			}),
+			childrenList = Tiddlers(self.store, self.store());
+
+		return childrenList.map(function(tiddler) {
+			var result;
+			$.each(tiddler.tags, function(i, tag) {
+				if (~tagList.indexOf(tag)) {
+					result = tiddler;
+					return false;
+				}
+			});
+			return result;
+		}).find(filter);
+	},
+	// return tiddlers that have a parent that matches the filter
+	hasParent: function(filter) {
+		var allParents = this.parents(filter).map(function(tiddler) {
+			return tiddler.title;
+		});
+
+		return this.map(function(tiddler) {
+			var result;
+			$.each(tiddler.tags, function(i, tag) {
+				if (~allParents.indexOf(tag)) {
+					result = tiddler;
+					return false;
+				}
+			});
+			return result;
+		});
+	},
+	// return tiddlers that have a child that matches the filter
+	hasChild: function(filter) {
+		var tagList = this.map(function(tiddler) {
+			return tiddler.title;
+		}),
+		allChildren = Tiddlers(this.store, this.store());
+
+		var titlesThatMatch = allChildren.map(function(tiddler) {
+			var result;
+			$.each(tiddler.tags, function(i, tag) {
+				if (~tagList.indexOf(tag)) {
+					result = tag;
+					return false;
+				}
+			});
+			return result;
+		});
+
+		return this.map(function(tiddler) {
+			if (~titlesThatMatch.indexOf(tiddler.title)) {
+				return tiddler;
+			}
+		});
+	},
 	each: function(fn) {
 		var self = this;
 		$.each(self, function(i, tiddler) {
