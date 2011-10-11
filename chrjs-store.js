@@ -468,7 +468,7 @@ return {
 });
 define('filter',['filter-syntax'], function(parser) {
 
-var Tiddlers, contains;
+var Tiddlers, contains, _parent, _child;
 
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
 Tiddlers = function(store, tiddlers) {
@@ -490,6 +490,46 @@ Tiddlers = function(store, tiddlers) {
 contains = function(field, match) {
 	return (field && field.indexOf(match) !== -1) ? true : false;
 };
+
+// return parents of a tiddler
+_parents = function(store, list) {
+	var parentList = Tiddlers(store),
+		usedTags = [];
+
+	list.each(function(tiddler) {
+		$.each(tiddler.tags || [], function(i, tag) {
+			if (!~usedTags.indexOf(tag)) {
+				usedTags.push(tag);
+				var parent = store.get(tag);
+				if (parent) {
+					parentList.push(parent);
+				}
+			}
+		});
+	});
+
+	return parentList;
+};
+
+// return the children of a tiddler
+_children = function(store, list) {
+	var tagList = list.map(function(tiddler) {
+			return tiddler.title;
+		}),
+		childrenList = Tiddlers(store, store());
+
+	return childrenList.map(function(tiddler) {
+		var result;
+		$.each(tiddler.tags || [], function(i, tag) {
+			if (~tagList.indexOf(tag)) {
+				result = tiddler;
+				return false;
+			}
+		});
+		return result;
+	});
+};
+
 
 Tiddlers.fn = {
 	find: function(match) {
@@ -612,6 +652,148 @@ Tiddlers.fn = {
 				}
 			});
 		}
+	},
+	// ord is, e.g. "tags, -title" (sorts by tags asc, then by title desc), or a function (defaults to Array.prototype.sort)
+	sort: function(ord) {
+		var sortOrder = (typeof ord === 'string') ? ord.split(/,\s*/) : null,
+			_sort = Array.prototype.sort;
+
+		if (sortOrder) {
+			return _sort.call(this, function(left, right) {
+				var result = 0;
+				$.each(sortOrder, function(i, field) {
+					var desc = (field.charAt(0) === '-') ? true : false,
+						name = (desc) ? field.slice(1) : field,
+						leftVal = left[name] ||
+							(left.fields && left.fields[name]) || null,
+						rightVal = right[name] ||
+							(right.fields && right.fields[name]) || null;
+
+					if (typeof leftVal === 'string') {
+						leftVal = leftVal.toLowerCase();
+					}
+					if (typeof rightVal === 'string') {
+						rightVal = rightVal.toLowerCase();
+					}
+
+					if (desc) {
+						result = (leftVal > rightVal) ? -1 :
+							((leftVal < rightVal) ? 1 : null);
+					} else {
+						result = (leftVal > rightVal) ? 1 :
+							((leftVal < rightVal) ? -1 : null);
+					}
+
+					if (result) {
+						return false;
+					}
+				});
+
+				return result;
+			});
+		} else {
+			return _sort.call(this, ord);
+		}
+	},
+	// return the first n tiddlers in the list
+	limit: function(n) {
+		var newList = Tiddlers(this.store),
+			i, l;
+		for (i = 0, l = this.length; i < n && i < l; i++) {
+			newList.push(this[i]);
+		}
+		return newList;
+	},
+	// return tiddlers that are tagged by the the tiddlers in the list and match filter
+	// i.e. the tiddlers in the list have a tag that equals the parent's tiddler title
+	parents: function(filter) {
+		var parentList = _parents(this.store, this),
+			oldAST = this.ast, // we need this to check the children of the new parents
+			self = this;
+		parentList = (filter) ?  parentList.find(filter) : parentList;
+		parentList.ast.value.push({
+			type: 'function',
+			value: (function() {
+				var tester = parser.createTester(oldAST);
+				return function(tiddler) {
+					var children = _children(self.store,
+							Tiddlers(self.store, [tiddler])),
+						match = false;
+
+					children.each(function(tid) {
+						if (tester(tid)) {
+							match = true;
+						}
+					});
+
+					return match;
+				};
+			}())
+		});
+
+		return parentList;
+	},
+	// return tiddlers that have tags that equal the title of a tiddler in the list and pass the filter
+	children: function(filter) {
+		var results = _children(this.store, this),
+			oldAST = this.ast,
+			self = this;
+
+		results = (filter) ? results.find(filter) : results;
+		results.ast.value.push({
+			type: 'function',
+			value: (function() {
+				var tester = parser.createTester(oldAST);
+				return function(tiddler) {
+					var parents = _parents(self.store,
+							Tiddlers(self.store, [tiddler])),
+						match = false;
+
+					parents.each(function(tid) {
+						if (tester(tid)) {
+							match = true;
+						}
+					});
+
+					return match;
+				};
+			}())
+		});
+
+		return results;
+	},
+	// return tiddlers that have a parent that matches the filter
+	hasParent: function(filter) {
+		var allParents = this.parents(filter).map(function(tiddler) {
+			return tiddler.title;
+		});
+
+		return this.map(function(tiddler) {
+			var result;
+			$.each(tiddler.tags || [], function(i, tag) {
+				if (~allParents.indexOf(tag)) {
+					result = tiddler;
+					return false;
+				}
+			});
+			return result;
+		});
+	},
+	// return tiddlers that have a child that matches the filter
+	hasChild: function(filter) {
+		var allChildren = this.children(filter);
+
+		// create a list of tiddler titles based on what children are tagged with
+		// use jQuery.map instead of this.map as it flattens as well
+		var tagList = $.map(allChildren, function(tiddler) {
+			return tiddler.tags;
+		});
+
+		return this.map(function(tiddler) {
+			if (~tagList.indexOf(tiddler.title)) {
+				return tiddler;
+			}
+		});
 	},
 	each: function(fn) {
 		var self = this;

@@ -1,6 +1,6 @@
 define(['filter-syntax'], function(parser) {
 
-var Tiddlers, contains;
+var Tiddlers, contains, _parent, _child;
 
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
 Tiddlers = function(store, tiddlers) {
@@ -22,6 +22,46 @@ Tiddlers = function(store, tiddlers) {
 contains = function(field, match) {
 	return (field && field.indexOf(match) !== -1) ? true : false;
 };
+
+// return parents of a tiddler
+_parents = function(store, list) {
+	var parentList = Tiddlers(store),
+		usedTags = [];
+
+	list.each(function(tiddler) {
+		$.each(tiddler.tags || [], function(i, tag) {
+			if (!~usedTags.indexOf(tag)) {
+				usedTags.push(tag);
+				var parent = store.get(tag);
+				if (parent) {
+					parentList.push(parent);
+				}
+			}
+		});
+	});
+
+	return parentList;
+};
+
+// return the children of a tiddler
+_children = function(store, list) {
+	var tagList = list.map(function(tiddler) {
+			return tiddler.title;
+		}),
+		childrenList = Tiddlers(store, store());
+
+	return childrenList.map(function(tiddler) {
+		var result;
+		$.each(tiddler.tags || [], function(i, tag) {
+			if (~tagList.indexOf(tag)) {
+				result = tiddler;
+				return false;
+			}
+		});
+		return result;
+	});
+};
+
 
 Tiddlers.fn = {
 	find: function(match) {
@@ -155,7 +195,7 @@ Tiddlers.fn = {
 				var result = 0;
 				$.each(sortOrder, function(i, field) {
 					var desc = (field.charAt(0) === '-') ? true : false,
-						name = (desc) ? field.splice(1) : field,
+						name = (desc) ? field.slice(1) : field,
 						leftVal = left[name] ||
 							(left.fields && left.fields[name]) || null,
 						rightVal = right[name] ||
@@ -199,38 +239,60 @@ Tiddlers.fn = {
 	// return tiddlers that are tagged by the the tiddlers in the list and match filter
 	// i.e. the tiddlers in the list have a tag that equals the parent's tiddler title
 	parents: function(filter) {
-		var parentList = Tiddlers(this.store),
+		var parentList = _parents(this.store, this),
+			oldAST = this.ast, // we need this to check the children of the new parents
 			self = this;
+		parentList = (filter) ?  parentList.find(filter) : parentList;
+		parentList.ast.value.push({
+			type: 'function',
+			value: (function() {
+				var tester = parser.createTester(oldAST);
+				return function(tiddler) {
+					var children = _children(self.store,
+							Tiddlers(self.store, [tiddler])),
+						match = false;
 
-		this.each(function(tiddler) {
-			$.each(tiddler.tags, function(i, tag) {
-				var parent = self.store.get(tag);
-				if (parent) {
-					parentList.push(parent);
-				}
-			});
+					children.each(function(tid) {
+						if (tester(tid)) {
+							match = true;
+						}
+					});
+
+					return match;
+				};
+			}())
 		});
 
-		return parentList.find(filter);
+		return parentList;
 	},
 	// return tiddlers that have tags that equal the title of a tiddler in the list and pass the filter
 	children: function(filter) {
-		var self = this,
-			tagList = self.map(function(tiddler) {
-				return tiddler.title;
-			}),
-			childrenList = Tiddlers(self.store, self.store());
+		var results = _children(this.store, this),
+			oldAST = this.ast,
+			self = this;
 
-		return childrenList.map(function(tiddler) {
-			var result;
-			$.each(tiddler.tags, function(i, tag) {
-				if (~tagList.indexOf(tag)) {
-					result = tiddler;
-					return false;
-				}
-			});
-			return result;
-		}).find(filter);
+		results = (filter) ? results.find(filter) : results;
+		results.ast.value.push({
+			type: 'function',
+			value: (function() {
+				var tester = parser.createTester(oldAST);
+				return function(tiddler) {
+					var parents = _parents(self.store,
+							Tiddlers(self.store, [tiddler])),
+						match = false;
+
+					parents.each(function(tid) {
+						if (tester(tid)) {
+							match = true;
+						}
+					});
+
+					return match;
+				};
+			}())
+		});
+
+		return results;
 	},
 	// return tiddlers that have a parent that matches the filter
 	hasParent: function(filter) {
@@ -240,7 +302,7 @@ Tiddlers.fn = {
 
 		return this.map(function(tiddler) {
 			var result;
-			$.each(tiddler.tags, function(i, tag) {
+			$.each(tiddler.tags || [], function(i, tag) {
 				if (~allParents.indexOf(tag)) {
 					result = tiddler;
 					return false;
@@ -251,24 +313,16 @@ Tiddlers.fn = {
 	},
 	// return tiddlers that have a child that matches the filter
 	hasChild: function(filter) {
-		var tagList = this.map(function(tiddler) {
-			return tiddler.title;
-		}),
-		allChildren = Tiddlers(this.store, this.store());
+		var allChildren = this.children(filter);
 
-		var titlesThatMatch = allChildren.map(function(tiddler) {
-			var result;
-			$.each(tiddler.tags, function(i, tag) {
-				if (~tagList.indexOf(tag)) {
-					result = tag;
-					return false;
-				}
-			});
-			return result;
+		// create a list of tiddler titles based on what children are tagged with
+		// use jQuery.map instead of this.map as it flattens as well
+		var tagList = $.map(allChildren, function(tiddler) {
+			return tiddler.tags;
 		});
 
 		return this.map(function(tiddler) {
-			if (~titlesThatMatch.indexOf(tiddler.title)) {
+			if (~tagList.indexOf(tiddler.title)) {
 				return tiddler;
 			}
 		});
