@@ -113,6 +113,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// public functions
 
 	// let filter be extensible
+	self.Collection = filter;
 	self.fn = filter.fn;
 
 	// takes in a callback. calls callback with an object consisting of:
