@@ -24,7 +24,7 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 
 	// return parents of a tiddler
 	var _parents = function(store, list) {
-		var parentList = store.Collection(store),
+		var parentList = store.Collection(),
 			usedTags = [];
 
 		list.each(function(tiddler) {
@@ -47,7 +47,7 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 		var tagList = list.map(function(tiddler) {
 				return tiddler.title;
 			}),
-			childrenList = store.Collection(store, store());
+			childrenList = store.Collection(store());
 
 		return childrenList.map(function(tiddler) {
 			var result;
@@ -75,7 +75,7 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 					var tester = parser.createTester(oldAST);
 					return function(tiddler) {
 						var children = _children(self.store,
-								self.store.Collection(self.store, [tiddler])),
+								self.store.Collection([tiddler])),
 							match = false;
 
 						children.each(function(tid) {
@@ -104,7 +104,7 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 					var tester = parser.createTester(oldAST);
 					return function(tiddler) {
 						var parents = _parents(self.store,
-								self.store.Collection(self.store, [tiddler])),
+								self.store.Collection([tiddler])),
 							match = false;
 
 						parents.each(function(tid) {

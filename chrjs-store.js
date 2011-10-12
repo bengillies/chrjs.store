@@ -1217,8 +1217,15 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 
 	// public functions
 
+	// add the filter constructor in case people want to make collections manually
+	self.Collection = (function() {
+		return function() {
+			var args = Array.prototype.slice.call(arguments);
+			args.unshift(self);
+			return filter.apply(self, args);
+		};
+	}());
 	// let filter be extensible
-	self.Collection = filter;
 	self.fn = filter.fn;
 
 	// takes in a callback. calls callback with an object consisting of:
