@@ -22,6 +22,8 @@ test('title filter', function() {
 	tids = ts().title('Foo');
 	strictEqual(tids.length, 1);
 	strictEqual(tids[0].title, 'Foo');
+	tids = ts().title('Fo');
+	strictEqual(tids.length, 0, 'Titles require exact matches');
 });
 
 test('tag filter', function() {

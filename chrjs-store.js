@@ -486,9 +486,14 @@ Tiddlers = function(store, tiddlers) {
 	return self;
 };
 
-// Check if match is in field
-contains = function(field, match) {
-	return (field && field.indexOf(match) !== -1) ? true : false;
+// Check if match is in field. fuzzy states whether exact match or just found in
+// default is false
+contains = function(field, match, fuzzy) {
+	if ((!fuzzy) && (field && !(field instanceof Array))) {
+		return (field && field === match) ? true : false;
+	} else {
+		return (field && ~field.indexOf(match)) ? true : false;
+	}
 };
 
 Tiddlers.fn = {
@@ -506,17 +511,17 @@ Tiddlers.fn = {
 	},
 	tag: function(match) {
 		return this.map(function(tiddler) {
-			return contains(tiddler.tags, match) ? tiddler : null;
+			return contains(tiddler.tags, match, true) ? tiddler : null;
 		});
 	},
 	text: function(match) {
 		return this.map(function(tiddler) {
-			return contains(tiddler.text, match) ? tiddler : null;
+			return contains(tiddler.text, match, true) ? tiddler : null;
 		});
 	},
 	title: function(match) {
 		return this.map(function(tiddler) {
-			return contains(tiddler.title, match) ? tiddler : null;
+			return contains(tiddler.title, match, false) ? tiddler : null;
 		});
 	},
 	attr: function(name, match) {
@@ -529,7 +534,7 @@ Tiddlers.fn = {
 			if (chkExists) {
 				return (getValue(tiddler)) ? tiddler : null;
 			} else {
-				return contains(getValue(tiddler), match) ? tiddler : null;
+				return contains(getValue(tiddler), match, false) ? tiddler : null;
 			}
 		});
 	},
@@ -543,7 +548,7 @@ Tiddlers.fn = {
 			if (chkExists) {
 				return (getValue(tiddler)) ? null : tiddler;
 			} else {
-				return contains(getValue(tiddler), match) ? null : tiddler;
+				return contains(getValue(tiddler), match, false) ? null : tiddler;
 			}
 		});
 	},
