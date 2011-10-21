@@ -66,7 +66,9 @@ tiddlyweb.Recipe.prototype.tiddlers = newTiddlers;
 var _oldAjax = $.ajax;
 $.ajax = function(options) {
 	if (options && options.url === '/?limit=1') {
-		options.success.apply(this, [[{recipe: 'foo_public'}]]);
+		options.success.call(this, [{recipe: 'foo_public'}]);
+	} else if (options && options.url === '/status') {
+		options.success.call(this, {space: {name: 'foo', recipe: 'foo_public'} });
 	} else {
 		_oldAjax.apply(this, arguments);
 	}

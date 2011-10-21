@@ -21,7 +21,7 @@ return function(container) {
 
 	// Assume default host of /, and that a (list of) tiddler(s) is returned from / as well
 	// XXX: This can probably be _vastly_ improved for non-TiddlySpace use-cases
-	var determineContainer = function(callback) {
+	var determineContainerFromTiddler = function(callback) {
 		$.ajax({
 			url: '/?limit=1', // get a tiddler from whatever is default
 			dataType: 'json',
@@ -50,6 +50,29 @@ return function(container) {
 			},
 			error: function(xhr, txtStatus, err) {
 				callback(null, err, xhr);
+			}
+		});
+	};
+
+	// assume that /status returns a space attribute that can be used tpo figure out
+	// default containers. Fallback to determineContainerFromTiddler if it doesn't
+	var determineContainer = function(callback) {
+		$.ajax({
+			url: '/status', // expect a "space" attribute back from /status
+			dataType: 'json',
+			success: function(data) {
+				var res = data.space;
+				if (res) {
+					callback({
+						pullFrom: new tiddlyweb.Recipe(res.recipe, '/'),
+						pushTo: new tiddlyweb.Bag(res.name + '_public', '/')
+					});
+				} else {
+					determineContainerFromTiddler(callback);
+				}
+			},
+			error: function(xhr, txtStatus, err) {
+				determineContainerFromTiddler(callback);
 			}
 		});
 	};
