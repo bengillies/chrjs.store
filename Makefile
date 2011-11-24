@@ -1,7 +1,7 @@
 # arg is file to write to
-build = cd src && ../lib/requirejs/build/build.sh name=main.js \
+build = cd src && node ../lib/r.js  -o name=main.js \
 	out=../$(1) baseUrl=. optimize=none && cd .. && \
-	cat build/mini_require.js > $(1).tmp && \
+	cat lib/almond.js > $(1).tmp && \
 	cat $(1) | sed '$$d' >> $(1).tmp && \
 	mv $(1).tmp $(1)
 
@@ -10,17 +10,25 @@ apply_copyright = sed 's/\#{VERSION}/$(1)/g' COPYRIGHT > \
 	dist/chrjs-store-$(1)$(2).js && \
 	cat chrjs-store.js >> dist/chrjs-store-$(1)$(2).js
 
-dist: lib/requirejs dev
+dist: lib/r.js dev
 	$(call apply_copyright,$(shell cat VERSION))
 	uglifyjs -o dist/chrjs-store-`cat VERSION`.min.js \
 		dist/chrjs-store-`cat VERSION`.js
 	cp dist/chrjs-store-`cat VERSION`.js dist/chrjs-store-latest.js
+	cp dist/chrjs-store-`cat VERSION`.min.js dist/chrjs-store-latest.min.js
 
-lib/requirejs:
-	curl -o lib/requirejs.zip \
-		http://requirejs.org/docs/release/0.24.0/requirejs-0.24.0.zip
-	cd lib && unzip requirejs.zip && mv requirejs-0.24.0 requirejs
-	rm lib/requirejs.zip
+lib/r.js:
+	curl -o lib/r.js \
+		http://requirejs.org/docs/release/1.0.2/r.js
+
+lib/almond.js:
+	curl -o lib/almond.js \
+		https://raw.github.com/jrburke/almond/master/almond.js
+
+lib/qunit:
+	curl -o lib/qunit \
+		https://raw.github.com/bengillies/homedir/master/bin/qunit
+	chmod +x lib/qunit
 
 .PHONY: clean testclean distclean remotes test dist dev
 
@@ -32,7 +40,7 @@ testclean:
 distclean:
 	rm -r dist || true
 
-remotes: testclean
+remotes: testclean lib/requirejs lib/almond.js
 	mkdir test/lib
 	curl -o test/lib/qunit.js \
 		https://raw.github.com/jquery/qunit/master/qunit/qunit.js
@@ -45,8 +53,8 @@ remotes: testclean
 	curl -o test/lib/chrjs.js \
 		https://raw.github.com/tiddlyweb/chrjs/master/main.js
 
-dev: lib/requirejs
+dev: lib/r.js
 	 $(call build,chrjs-store.js)
 
-test: dev
-	phantomjs test/testrunner.js file://`pwd`/test/index.html
+test: dev lib/qunit
+	lib/qunit test/index.html
