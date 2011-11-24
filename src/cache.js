@@ -31,8 +31,8 @@ return {
 			window.localStorage.removeItem(key);
 		}
 	},
-	list: function() {
-		var tiddlers = [], i, l;
+	each: function(callback) {
+		var i, l;
 		if (isLocalStorage) {
 			for (i = 0, l = window.localStorage.length; i < l; i++) {
 				try {
@@ -50,13 +50,14 @@ return {
 					if (bagName) {
 						tiddler.bag = new tiddlyweb.Bag(bagName, '/');
 					}
-					tiddlers.push(tiddler);
+					if (callback(tiddler) === false) {
+						break;
+					}
 				} catch(e) {
 					// not a chrjs-store cached tiddler
 				}
 			};
 		}
-		return tiddlers;
 	},
 	clear: function() {
 		if (isLocalStorage) {
