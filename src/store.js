@@ -87,39 +87,60 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		return true;
 	};
 
-	// public variables
-	// take in an optional filter and return a Tiddlers object with the tiddlers that match it
-	self = function(name, match) {
-		var allTiddlers = filter(self);
+	// create an error object
+	var chrjsError = function(name, message) {
+		this.name = name;
+		this.message = message;
+	};
+	chrjsError.prototype = new Error();
+	chrjsError.prototype.constructor = chrjsError;
 
-		self.each(function(tiddler, title) {
+	// define a helper for extracting tiddlers out of arguments
+	// returns an object containing title, modified tid, tid, rawTiddler passed in
+	var getTid = function(o) {
+		if (!(typeof o === 'string' || o instanceof tiddlyweb.Tiddler)) {
+			return {};
+		}
+
+		var isTitleOnly = (typeof o === 'string') ? true : false,
+			tid = (isTitleOnly) ? new tiddlyweb.Tiddler(o) : o,
+			res = {};
+
+		res.modified = modified.get(tid);
+		res.title = tid.title;
+		res.rawTiddler = tid;
+
+		res.tiddler = res.modified || store.get(tid) ||
+			((!isTitleOnly) ? o : null);
+
+		return res;
+	}
+
+	// public variables
+	var _constructor = function(name, match) {
+		var allTiddlers = self.Collection();
+
+		self.each(function(tiddler) {
 			allTiddlers.push(tiddler);
 		});
 
-		if ((typeof match === 'undefined') && (typeof name === 'string')) {
-			allTiddlers = allTiddlers.find(name);
-		} else if (typeof name === 'function') {
-			allTiddlers = allTiddlers.map(name);
-		} else if (allTiddlers[name]) {
-			allTiddlers = allTiddlers[name](match);
-		} else if (name) {
-			allTiddlers = allTiddlers.attr(name, match);
-		}
-
-		return allTiddlers;
+		return allTiddlers.find(name, match);
 	};
+	// This is the constructor function. The API gets attached to this.
+	// NB: it's one line so that it doesn't take up too much space when
+	// logged to the console in Chrome.
+	self = function() { return _constructor.apply(this, arguments); };
+
 	self.recipe = null;
 
 	// public functions
 
 	// add the filter constructor in case people want to make collections manually
-	self.Collection = (function() {
-		return function() {
-			var args = Array.prototype.slice.call(arguments);
-			args.unshift(self);
-			return filter.apply(self, args);
-		};
-	}());
+	self.Collection = function() {
+		var args = Array.prototype.slice.call(arguments);
+		args.unshift(self);
+		return filter.apply(null, args);
+	};
 	// let filter be extensible
 	self.fn = filter.fn;
 
@@ -127,67 +148,45 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// pullFrom: default location to refresh the store from
 	// pushTo: default location to save to
 	self.getDefaults = function(callback) {
-		if (!self.recipe) {
-			//populate self.recipe the first time we call it
-			defaults.getDefault(function(containers) {
-				self.recipe = containers.pullFrom;
-			});
-		}
+		var res = defaults.getDefault(function(containers) {
+			self.recipe = containers.pullFrom;
+			if (callback) {
+				callback(containers);
+			}
+		});
 
-		if (callback) {
-			defaults.getDefault(callback);
-		} else {
-			return defaults.getDefault();
-		}
-
-		return self;
+		return (callback) ? res : self;
 	};
 
-	self.bind = function() {
-		ev.bind.apply(self, arguments);
+	// add the eventing system
+	$.each(ev, function(key, func) {
+		self[key] = function() {
+			func.apply(self, arguments);
 
-		return self;
-	};
-
-	self.unbind = function() {
-		ev.unbind.apply(self, arguments);
-
-		return self;
-	};
-
-	self.trigger = function() {
-		ev.trigger.apply(self, arguments);
-
-		return self;
-	};
+			return self;
+		};
+	});
 
 	// refresh tiddlers contained in the recipe.
 	self.refresh = function(callback) {
 		var getTiddlersSkinny = function(container) {
-			var tiddlerCollection = container.tiddlers();
-			tiddlerCollection.get(function(result) {
-				$.each(result, function(i, tiddler) {
+			container.tiddlers().get(function(result) {
+				var tiddlers = self.Collection(result).each(function(tiddler) {
 					replace(store, tiddler);
 				});
-				removeDeleted(container, result);
+				removeDeleted(container, tiddlers);
 				if (callback) {
-					callback.call(self, filter(self, result));
+					callback.call(self, tiddlers);
 				}
 			}, function(xhr, err, errMsg) {
-				callback(null, {
-					name: 'RetrieveTiddlersError',
-					message: 'Error getting tiddlers: ' + errMsg
-				}, xhr);
+				callback(null, new chrjsError('RetrieveTiddlersError',
+					'Error getting tiddlers: ' + errMsg), xhr);
 			});
 		};
 
-		if (self.recipe) {
-			getTiddlersSkinny(self.recipe);
-		} else {
-			self.getDefaults(function(containers) {
-				getTiddlersSkinny(containers.pullFrom);
-			});
-		}
+		self.getDefaults(function(containers) {
+			getTiddlersSkinny(containers.pullFrom);
+		});
 
 		return self;
 	};
@@ -195,44 +194,33 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// returns the tiddler, either directly if no callback, or fresh from the server inside the callback if given
 	// returns pending first, then in recipe order (ie last bag first) if > 1 exist
 	// render sets the render=1 flag on the GET request, server forces the function to return the server version
-	self.get = function(tid, callback, render, server) {
-		var pending = ((tid instanceof tiddlyweb.Tiddler) ? modified.get(tid) :
-				modified.get(new tiddlyweb.Tiddler(tid))) || null,
-			tiddler = (function() {
-				var tiddler = (!server && pending) ? pending : tid;
-				if (tiddler instanceof tiddlyweb.Tiddler) {
-					return tiddler;
-				}
-				self.each(function(t, title) {
-					if (title === tiddler) {
-						tiddler = t;
-						return false;
-					}
-				});
-				return (tiddler instanceof tiddlyweb.Tiddler) ? tiddler : null;
-			}());
+	self.get = function(tiddler, callback, render, server) {
+		var args = getTid(tiddler);
 
-		if (!callback && tiddler) {
-			return tiddler;
-		} else if (!server && pending) {
-			callback.call(self, tiddler);
-		} else if (tiddler) {
-			tiddler.get(function(t) {
-				replace(store, t);
-				callback.call(self, t);
-			}, function(xhr, err, errMsg) {
-				callback.call(self, null, {
-					name: 'RetrieveTiddlersError',
-					message: 'Error getting tiddler: ' + errMsg
-				}, xhr);
-			}, (render) ? 'render=1' : '');
-		} else if (callback) {
-			callback.call(self, null, {
-				name: 'NotFoundError',
-				message: 'Tiddler not found'
+		var success = function(t) {
+			replace(store, t);
+			callback.call(self, t);
+		};
+		var error = function(xhr, err, errMsg) {
+			callback.call(self, null, new chrjsError('GetTiddlerError',
+				'Error getting tiddler: ' + errMsg), xhr);
+		};
+
+		if (args.tiddler && server && !args.modified) {
+			args.tiddler = store.get(args.tiddler);
+		}
+
+		if (!callback) {
+			return args.tiddler;
+		} else if (!server && args.modified) {
+			callback.call(self, args.tiddler);
+		} else if (args.tiddler) {
+			args.tiddler.get(success, error, (render) ? 'render=1' : '');
+		} else if (callback && args.title) {
+			self.getDefaults(function(container) {
+				var tid = new tiddlyweb.Tiddler(args.title, container.pullFrom);
+				tid.get(success, error);
 			});
-		} else {
-			return null;
 		}
 
 		return self;
@@ -241,13 +229,13 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// loops over every tiddler and calls callback with them
 	self.each = function(callback) {
 		var continueLoop = true;
-		$.each(modified.list(), function(title, tiddler) {
-			continueLoop = callback(tiddler, title);
+		modified.each(function(tiddler) {
+			continueLoop = callback(tiddler, tiddler.title);
 			return continueLoop;
 		});
 
 		if (continueLoop || typeof continueLoop === 'undefined') {
-			$.each(store.list(), function(i, tiddler) {
+			store.each(function(tiddler) {
 				return callback(tiddler, tiddler.title);
 			});
 		}
@@ -281,54 +269,49 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// save any tiddlers in the pending object back to the server, and remove them from pending
 	// tiddler should be a tiddlyweb.Tiddler to save just that tiddler directly, or a callback to save all tiddlers in pending
 	self.save = function(tiddler, cllbck) {
-		var empty = true, isTiddler = (tiddler instanceof tiddlyweb.Tiddler),
-			callback = (!isTiddler && tiddler) ? tiddler : cllbck,
-			// do the actual saving bit
-			saveTiddler = function(tiddler, callback) {
-				var preSave = modified.get(tiddler);
-				if (!tiddler.bag) {
-					self.getDefaults(function(containers) {
-						tiddler.bag = containers.pushTo;
-						saveTiddler(tiddler, callback);
-					});
-					return;
-				}
-				tiddler.put(function(response) {
-					if (isEqual(preSave, modified.get(tiddler))) {
-						modified.remove(tiddler);
-					}
-					replace(store, response);
-					callback(response);
-				}, function(xhr, err, errMsg) {
-					var currModified = modified.get(tiddler);
-					if (!currModified || (!isEqual(preSave, tiddler) &&
-							isEqual(preSave, currModified))) {
-						// put it back (if it hasn't already been replaced)
-						replace(modified, tiddler);
-					}
-					callback(null, {
-						name: 'SaveError',
-						message: 'Error saving ' + tiddler.title + ': ' + errMsg
-					}, xhr);
-				});
-			};
+		var args = getTid(tiddler),
+			callback = (args.tiddler) ? (cllbck || function() {}) :
+				(tiddler || function() {}),
+			tiddler = args.modified || args.rawTiddler;
 
-		if (isTiddler) {
+		var saveTiddler = function(tiddler, callback) {
+			var preSave = modified.get(tiddler);
+			if (!tiddler.bag && !tiddler.recipe) {
+				self.getDefaults(function(containers) {
+					tiddler.bag = containers.pushTo;
+					saveTiddler(tiddler, callback);
+				});
+				return;
+			}
+			tiddler.put(function(response) {
+				if (isEqual(preSave, modified.get(tiddler))) {
+					modified.remove(tiddler);
+				}
+				replace(store, response);
+				callback(response);
+			}, function(xhr, err, errMsg) {
+				var currModified = modified.get(tiddler);
+				if (!currModified || (!isEqual(preSave, tiddler) &&
+						isEqual(preSave, currModified))) {
+					// put it back (if it hasn't already been replaced)
+					replace(modified, tiddler);
+				}
+				callback(null, new chrjsError('SaveError',
+					'Error saving ' + tiddler.title + ': ' + errMsg), xhr);
+			});
+		};
+
+		if (tiddler) {
 			saveTiddler(tiddler, callback);
 			return self;
 		}
 
-		$.each(modified.list(), function(i, tiddler) {
-			if (empty) {
-				empty = false;
-			}
-			saveTiddler(tiddler, callback);
-		});
-		if (empty) {
-			callback(null, {
-				name: 'EmptyError',
-				message: 'Nothing to save'
+		if (!modified.isEmpty()) {
+			modified.each(function(tiddler) {
+				saveTiddler(tiddler, callback);
 			});
+		} else {
+			callback(null, new chrjsError('EmptyError', 'Nothing to save'));
 		}
 
 		return self;
@@ -346,16 +329,12 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			callback: cllbck || function() {}
 		};
 
-		if (typeof tid === 'string') {
-			options.tiddler = self.get(tid);
-		} else if (!(tid instanceof tiddlyweb.Tiddler)) {
-			$.extend(options, tid);
-		}
+		$.extend(options, getTid(options.tiddler));
 
 		if (!options.tiddler) {
 			return self;
 		} else {
-			if (options.pending) {
+			if (options.pending && options.modified) {
 				modified.remove(options.tiddler);
 			}
 			if (options.server && (options.tiddler.bag ||
@@ -366,11 +345,9 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 					options.callback(tiddler);
 				}, function(xhr, err, errMsg) {
 					options.callback((options.pending) ? options.tiddler : null,
-						{
-							name: 'DeleteError',
-							message: 'Error deleting ' + options.tiddler.title +
-								': ' + errMsg
-					}, xhr);
+						new chrjsError('DeleteError',
+							'Error deleting ' + options.tiddler.title + ': '
+							+ errMsg), xhr);
 				});
 			} else {
 				self.trigger('tiddler', options.tiddler.title, [options.tiddler,
@@ -414,7 +391,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 
 	// import pending from localStorage
 	self.retrieveCached = function() {
-		$.each(cache.list(), function(i, tiddler) {
+		cache.each(function(tiddler) {
 			self.add(tiddler);
 		});
 
