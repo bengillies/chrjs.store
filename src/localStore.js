@@ -28,12 +28,12 @@ define(['cache'], function(cache) {
 		// if bag is not present, search through bags until we find a match
 		var get = function(tiddler) {
 			var match = store[createKey(tiddler)],
-				tidTester;
+				tidTester, i, l;
 			if (match) {
 				return makeCopy(match);
 			} else if (!tiddler.bag) {
 				tidTester = $.extend(new tiddlyweb.Tiddler(), tiddler);
-				for (var i = 0, l = bagList.length; i < l; i++) {
+				for (i = 0, l = bagList.length; i < l; i++) {
 					tiddler.bag = bagList[i];
 					match = store[createKey(tiddler)];
 					if (match) {
@@ -80,26 +80,37 @@ define(['cache'], function(cache) {
 			return removed;
 		};
 
-		// list all tiddlers
-		var list = function() {
-			var results = [];
-			$.each(store, function(key, tiddler) {
-				results.push(makeCopy(tiddler));
-			});
-			return results;
-		}
+		// loop over all tiddlers
+		// return false to break
+		var each = function(callback) {
+			var key, tiddler;
+			for (key in store) {
+				if (store.hasOwnProperty(key)) {
+					tiddler = makeCopy(store[key]);
+					if (callback(tiddler) === false) {
+						return false;
+					}
+				}
+			}
+		};
 
 		// list all bags
 		var bags = function() {
 			return bagList;
 		};
 
+		// test whether the store is empty
+		var isEmpty = function() {
+			return $.isEmptyObject(store);
+		};
+
 		return {
 			get: get,
 			set: set,
 			remove: remove,
-			list: list,
-			bags: bags
+			each: each,
+			bags: bags,
+			isEmpty: isEmpty
 		};
 	};
 });
