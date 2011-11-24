@@ -1,9 +1,17 @@
 define(['filter-syntax'], function(parser) {
 
-var Tiddlers, contains;
+// Check if match is in field. fuzzy states whether exact match or just found in
+// default is false
+var contains = function(field, match, fuzzy) {
+	if ((!fuzzy) && (field && !(field instanceof Array))) {
+		return (field && field === match) ? true : false;
+	} else {
+		return (field && ~field.indexOf(match)) ? true : false;
+	}
+};
 
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
-Tiddlers = function(store, tiddlers) {
+var Tiddlers = function(store, tiddlers) {
 	var self = [];
 	self.store = store;
 	self.ast = { type: 'and', value: [] };
@@ -18,28 +26,23 @@ Tiddlers = function(store, tiddlers) {
 	return self;
 };
 
-// Check if match is in field. fuzzy states whether exact match or just found in
-// default is false
-contains = function(field, match, fuzzy) {
-	if ((!fuzzy) && (field && !(field instanceof Array))) {
-		return (field && field === match) ? true : false;
-	} else {
-		return (field && ~field.indexOf(match)) ? true : false;
-	}
-};
-
 Tiddlers.fn = {
-	find: function(match) {
-		var AST = parser.parse(match), filterFunc;
+	find: function(name, match) {
+		var filterFunc, AST;
+		if ((typeof match === 'undefined') && typeof name === 'string') {
+			AST = parser.parse(name);
+			filterFunc = parser.createTester(AST);
 
-		// generate a function to test whether each tiddler matches
-		filterFunc = parser.createTester(AST);
+			return this.map(function(t) { return (filterFunc(t)) ? t : null; });
+		} else if (typeof name === 'function') {
+			return this.map(name);
+		} else if (this[name]) {
+			return this[name](match);
+		} else if (name) {
+			return this.attr(name, match);
+		}
 
-		// now we have a function we can use to test with, loop through all the
-		// tiddlers and test them
-		return this.map(function(tiddler) {
-			return (filterFunc(tiddler)) ? tiddler : null;
-		});
+		return this;
 	},
 	tag: function(match) {
 		return this.map(function(tiddler) {
