@@ -54,11 +54,11 @@ test('Add Tiddlers', function() {
 test('Save Tiddlers', function() {
 	var count = 0;
 	ts.each(function(tiddler) {
-		equal(tiddler.lastSync, undefined);
+		equal(tiddler.lastSync, null);
 		count++;
 	});
 	ts.save(function(tiddler) {
-		notEqual(tiddler.lastSync, undefined);
+		notEqual(tiddler.lastSync, null);
 		count--;
 	});
 	strictEqual(count, 0);
