@@ -1,298 +1,321 @@
-define(['filter-syntax'], function(parser) {
+define(function() {
 
-// Check if match is in field. fuzzy states whether exact match or just found in
-// default is false
-var contains = function(field, match, fuzzy) {
-	if ((!fuzzy) && (field && !(field instanceof Array))) {
-		return (field && field === match) ? true : false;
-	} else {
-		return (field && ~field.indexOf(match)) ? true : false;
-	}
+// split the string up into a matched part and the rest, and remove any tokens
+// surrounding the matched part (left and regex).
+// regex should be of the form, e.g. /\]\](.*)/ with (.*) capturing the "rest"
+var splitInner = function(left, regex) {
+	return function(str) {
+		var res = str.slice(left).split(regex);
+		return [res[0], res[1]];
+	};
 };
 
-// the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
-var Tiddlers = function(store, tiddlers) {
-	var self = [];
-	self.store = store;
-	self.ast = { type: 'and', value: [] };
-	if (tiddlers) {
-		$.each(tiddlers, function(i, tiddler) {
-			self.push(tiddler);
-		});
-	} else {
-		store.each(function(tiddler) {
-			self.push(tiddler);
-		});
-	}
-
-	$.extend(self, Tiddlers.fn);
-
-	return self;
+var Regexps = {
+	whitespace: /((?:\s|,).*)/,
+	doubleSquare: /\]\](.*)/,
+	doubleQuote: /"(.*)/
 };
 
-Tiddlers.fn = {
-	find: function(name, match) {
-		var filterFunc, AST;
-		if ((typeof match === 'undefined') && typeof name === 'string') {
-			AST = parser.parse(name);
-			filterFunc = parser.createTester(AST);
-
-			return this.map(function(t) { return (filterFunc(t)) ? t : null; });
-		} else if (typeof name === 'function') {
-			return this.map(name);
-		} else if (this[name]) {
-			return this[name](match);
-		} else if (name) {
-			return this.attr(name, match);
-		}
-
-		return this;
-	},
-	tag: function(match) {
-		return this.map(function(tiddler) {
-			return contains(tiddler.tags, match, true) ? tiddler : null;
-		});
-	},
-	text: function(match) {
-		return this.map(function(tiddler) {
-			return contains(tiddler.text, match, true) ? tiddler : null;
-		});
-	},
-	title: function(match) {
-		return this.map(function(tiddler) {
-			return contains(tiddler.title, match, false) ? tiddler : null;
-		});
-	},
-	attr: function(name, match) {
-		var chkExists = (!match) ? true : false,
-			getValue = function(tiddler) {
-				return tiddler[name] || (tiddler.fields &&
-					tiddler.fields[name]);
+var states = {
+	title: {
+		match: /^\[\[[^\]\]]+\]\]/,
+		action: splitInner(2, Regexps.doubleSquare),
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.title === value) ? true : false;
 			};
-		return this.map(function(tiddler) {
-			if (chkExists) {
-				return (getValue(tiddler)) ? tiddler : null;
-			} else {
-				return contains(getValue(tiddler), match, false) ? tiddler : null;
-			}
-		});
+		}
 	},
-	not: function(name, match) {
-		var chkExists = (!match) ? true : false,
-			getValue = function(tiddler) {
-				return tiddler[name] || (tiddler.fields &&
-					tiddler.fields[name]);
+	tag: {
+		match: /^#.+/,
+		action: splitInner(1, Regexps.whitespace),
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.tags && ~tiddler.tags.indexOf(value)) ?
+					true : false;
 			};
-		return this.map(function(tiddler) {
-			if (chkExists) {
-				return (getValue(tiddler)) ? null : tiddler;
-			} else {
-				return contains(getValue(tiddler), match, false) ? null : tiddler;
-			}
-		});
-	},
-	bag: function(name) {
-		return this.map(function(tiddler) {
-			var bag = tiddler.bag && tiddler.bag.name;
-			return (bag === name) ? tiddler : null;
-		});
-	},
-	// the space the tiddler originates from (i.e. not just included in)
-	// blank/true matches the current space, false matches everything else
-	space: function(name) {
-		var regex = /(_public|_private|_archive)$/,
-			current, spaceName;
-		if (name === true || name === undefined) {
-			current = true;
-		} else if (name === false) {
-			current = false;
 		}
-		if (current !== undefined) {
-			spaceName = this.store.recipe &&
-				this.store.recipe.name.replace(regex, '');
-		}
-		return this.map(function(tiddler) {
-			var bag = (tiddler.bag && tiddler.bag.name).replace(regex, '');
-			if (!spaceName) {
-				spaceName = (this.store.recipe &&
-					this.store.recipe.name.replace(regex, '')) || bag;
-			}
-			if (current) {
-				return (bag === spaceName) ? tiddler : null;
-			} else if (current === false) {
-				return (bag === spaceName) ? null: tiddler;
-			} else {
-				return (bag === name) ? tiddler : null;
-			}
-		});
 	},
-	// no arguments matches the default recipe
-	recipe: function(name) {
-		var matchCurrent = (name === undefined) ? true : false, recipe;
-		if (matchCurrent) {
-			recipe = this.store.recipe.name;
-		}
-		return this.map(function(tiddler) {
-			if (!matchCurrent) {
-				recipe = tiddler.recipe && tiddler.recipe.name;
-			}
-			return (recipe === name) ? tiddler : null;
-		});
-	},
-	// tiddlers that have been changed (i.e. not synced), lastSynced is optional and if present matches tiddlers that were synced before lastSynced
-	dirty: function(lastSynced) {
-		if (!lastSynced) {
-			return this.map(function(tiddler) {
-				return (tiddler.lastSync) ? null : tiddler;
-			});
-		} else {
-			return this.map(function(tiddler) {
-				if (tiddler.lastSync) {
-					// return true if tiddler.lastSync is older than lastSynced
-					return (+tiddler.lastSync < +lastSynced) ? tiddler :
-						null;
+	field: {
+		match: /^\[[^!=\]]+!?=[^\]]+\]/,
+		action: function(text) {
+			var split = text.indexOf('!='),
+				not = !!~split,
+				firstSplit = (!not) ? text.indexOf('=') : split,
+				secondSplit = text.indexOf(']'),
+				match, value
+				field = text.slice(1, firstSplit),
+				rest = text.slice(secondSplit + 1);
+				if (not) {
+					value = text.slice(firstSplit + 2, secondSplit);
 				} else {
-					return tiddler;
+					value = text.slice(firstSplit + 1, secondSplit);
 				}
-			});
-		}
-	},
-	// ord is, e.g. "tags, -title" (sorts by tags asc, then by title desc), or a function (defaults to Array.prototype.sort)
-	sort: function(ord) {
-		var sortOrder = (typeof ord === 'string') ? ord.split(/,\s*/) : null,
-			_sort = Array.prototype.sort;
-
-		if (sortOrder) {
-			return _sort.call(this, function(left, right) {
-				var result = 0;
-				$.each(sortOrder, function(i, field) {
-					var desc = (field.charAt(0) === '-') ? true : false,
-						name = (desc) ? field.slice(1) : field,
-						leftVal = left[name] ||
-							(left.fields && left.fields[name]) || null,
-						rightVal = right[name] ||
-							(right.fields && right.fields[name]) || null;
-
-					if (typeof leftVal === 'string') {
-						leftVal = leftVal.toLowerCase();
-					}
-					if (typeof rightVal === 'string') {
-						rightVal = rightVal.toLowerCase();
-					}
-
-					if (desc) {
-						result = (leftVal > rightVal) ? -1 :
-							((leftVal < rightVal) ? 1 : null);
-					} else {
-						result = (leftVal > rightVal) ? 1 :
-							((leftVal < rightVal) ? -1 : null);
-					}
-
-					if (result) {
-						return false;
-					}
-				});
-
-				return result;
-			});
-		} else {
-			return _sort.call(this, ord);
-		}
-	},
-	// return the first n tiddlers in the list
-	limit: function(n) {
-		var newList = Tiddlers(this.store, []),
-			i, l;
-		for (i = 0, l = this.length; i < n && i < l; i++) {
-			newList.push(this[i]);
-		}
-		return newList;
-	},
-	each: function(fn) {
-		var self = this;
-		$.each(self, function(i, tiddler) {
-			fn.apply(self, [tiddler, i]);
-		});
-		return self;
-	},
-	// returns a new instance of Tiddlers
-	map: function(fn) {
-		var self = this,
-			result = Tiddlers(self.store, []);
-		result.ast = self.ast;
-		result.ast.value.push({
-			type: 'function',
-			value: function(tiddler) {
-				var res = fn.apply(result, [tiddler]);
-				return (res) ? true : false;
-			}
-		});
-		$.each(self, function(i, tiddler) {
-			var mappedTiddler = fn.apply(self, [tiddler]);
-			if (mappedTiddler) {
-				result.push(mappedTiddler);
-			}
-		});
-		return result;
-	},
-	// pass in an initial value and a callback. Callback gets tiddler and current result, and returns new result
-	reduce: function(init, fn) {
-		var result = init, self = this;
-		$.each(self, function(i, tiddler) {
-			result = fn.apply(self, [tiddler, result]);
-		});
-		return result;
-	},
-	// turn the list of tiddlers into a set (i.e. make them unique)
-	unique: function() {
-		var set = {}, self = this,
-			result = Tiddlers(self.store, []);
-		$.each(this, function(i, tiddler) {
-			if (!set[tiddler.title]) {
-				set[tiddler.title] = tiddler;
-			} else if (!tiddler.lastSync) {
-				set[tiddler.title] = tiddler;
-			}
-		});
-
-		$.each(set, function(title, tiddler) {
-			result.push(tiddler);
-		});
-		return result;
-	},
-	// bind fn to the current set of matched tiddlers.
-	bind: function(fn) {
-		var self = this,
-			bindFunc = function() {
-				fn.apply(self, arguments);
+			match = {
+				field: field,
+				value: value,
+				not: not
 			};
-		self.store.bind('filter', parser.createTester(self.ast), bindFunc);
-		return self;
-	},
-	// save tiddlers currently in list. Callback happens for each tiddler
-	save: function(callback) {
-		var self = this;
-		$.each(self, function(i, tiddler) {
-			self.store.save(tiddler, callback);
-		});
-		return self;
-	},
-	// add one or more tiddlers to the current Tiddlers object and the attached store
-	add: function(tiddlers) {
-		var self = this;
-		if (tiddlers instanceof tiddlyweb.Tiddler) {
-			self.push(tiddlers);
-			self.store.add(tiddlers);
-		} else {
-			$.each(tiddlers, function(i, tiddler) {
-				self.push(tiddler);
-				self.store.add(tiddlers);
-			});
+			return [match, rest];
+		},
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				var matches = (tiddler[value.field] || (tiddler.fields &&
+					tiddler.fields[value.field]) === value.value) ?
+						true : false;
+				return (value.not) ? !matches : matches;
+			};
 		}
-		return self;
+	},
+	space: {
+		match: /^@.+/,
+		action: splitInner(1, Regexps.whitespace),
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.bag.name.split(/_(public|private)$/)[0] ===
+					value) ? true : false;
+			};
+		}
+	},
+	modifier: {
+		match: /^\+.+/,
+		action: splitInner(1, Regexps.whitespace),
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.modifier === value) ? true : false;
+			};
+		}
+	},
+	text: {
+		match: /^"[^"]+"/,
+		action: splitInner(1, Regexps.doubleQuote),
+		tiddlerTest: function(value) {
+			return function(tiddler) {
+				return (tiddler.text && ~tiddler.text.indexOf(value)) ?
+					true : false;
+			};
+		}
+	},
+	not: {
+		match: /!(?:\W|,)+/,
+		action: function(text) {
+			return ['not', text.slice(1)];
+		}
+	},
+	subBlock: {
+		match: /\(.+/,
+		action: function(text) {
+			var numBrackets = 1, i, l, curChar, pos = -1, matched, rest;
+			for (i=1, l=text.length; i < l; i++) {
+				curChar = text.charAt(i);
+				if (curChar === '(') {
+					numBrackets++;
+				} else if (curChar === ')') {
+					numBrackets--;
+				}
+				if (numBrackets === 0) {
+					pos = i;
+					break;
+				}
+			}
+			if (~pos) {
+				matched = text.slice(1, pos);
+				rest = text.slice(pos + 1);
+				return [matched, rest];
+			} else {
+				throw {
+					name: 'ParseError',
+					message: 'Brackets don\'t match'
+				};
+			}
+		}
+	},
+	or: {
+		match: /^,/,
+		action: function(text) {
+			return ['or', text.slice(1)];
+		}
 	}
 };
 
-return Tiddlers;
+// match the next object and return the match, which object it was, and what's left
+var match = function(text) {
+	var trimTxt = $.trim(text), type = null, result, rest, matched;
+
+	$.each(states, function(state, obj) {
+		if (obj.match.test(trimTxt)) {
+			type = state;
+			return false;
+		}
+	});
+
+	if (type) {
+		result = states[type].action(trimTxt);
+		matched = result[0];
+		rest = result[1] || '';
+		return [type, matched, rest]; // return state, text matched and remaining text
+	} else {
+		return false;
+	}
+};
+
+// consume one block and return a suitable object
+// used by the parse function. block is the array returned by the action functions
+var consumeBlock;
+consumeBlock = function(block) {
+	var objectify = function(res) {
+		return {
+			type: res[0],
+			value: res[1]
+		};
+	}, obj, nextObj, rest;
+
+	obj = objectify(block);
+
+	// consume any sub blocks
+	switch (obj.type) {
+		case 'not':
+			nextObj = consumeBlock(match(block[2]));
+			obj.value = nextObj[0];
+			rest = nextObj[1];
+			break;
+		case 'subBlock':
+			obj = parse(block[1]);
+			rest = block[2];
+			break;
+		default:
+			rest = block[2];
+			break;
+	}
+
+	return [obj, rest];
+};
+
+// parse an entire filter string
+// return an AST
+var parse = function(text) {
+	var AST = { type: 'or', value: [] }, filter, rest,
+		andBlock = { type: 'and', value: [] },
+		result = match(text);
+	while (result) {
+		if (result[0] === 'or') {
+			rest = result[2];
+			if (andBlock.length === 1) {
+				AST.value.push(andBlock.value[0]);
+			} else {
+				AST.value.push(andBlock);
+			}
+			andBlock = { type: 'and', value: [] };
+		} else {
+			filter = consumeBlock(result);
+			rest = filter[1];
+			andBlock.value.push(filter[0]);
+		}
+		result = match(rest);
+	}
+
+	// reduce the and/or blocks to be as simple as possible
+	if (andBlock.value.length === 1) {
+		AST.value.push(andBlock.value[0]);
+	} else if (andBlock.value.length > 1) {
+		AST.value.push(andBlock);
+	}
+
+	if (AST.value.length === 1) {
+		return AST.value[0];
+	} else if (AST.value.length > 1) {
+		return AST;
+	} else {
+		throw {
+			name: 'ParseError',
+			message: 'No filter found'
+		};
+	}
+};
+
+// construct a single function that does AND matching on a tiddler
+// out of a list of sub match functions
+var andFunc = function(fns) {
+	return function(tiddler) {
+		var match = true;
+		$.each(fns, function(i, fn) {
+			if (!fn(tiddler)) {
+				match = false;
+				return false;
+			}
+		});
+		return match;
+	};
+};
+
+// construct a single function that does OR matching on a tiddler
+// out of a list of sub match functions
+var orFunc = function(fns) {
+	return function(tiddler) {
+		var match = false;
+		$.each(fns, function(i, fn) {
+			if (fn(tiddler)) {
+				match = true;
+				return false;
+			}
+		});
+		return match;
+	};
+};
+
+// take in an AST and return a function that, when called with a tiddler,
+// returns true or false depending on whether that tiddler matches
+// AST is an object with type and value attributes
+var createTester = function(AST) {
+	// recurse through the AST and generate a tiddler tester function
+	var loopAST, tiddlerTester, filterFunc;
+	loopAST = function(block) {
+		var filterFunc, funcList = [];
+		switch (block.type) {
+			case 'and':
+				$.each(block.value, function(i, subBlock) {
+					funcList.push(loopAST(subBlock));
+				});
+				filterFunc = andFunc(funcList);
+				break;
+			case 'or':
+				$.each(block.value, function(i, subBlock) {
+					funcList.push(loopAST(subBlock));
+				});
+				filterFunc = orFunc(funcList);
+				break;
+			case 'not':
+				funcList = loopAST(block.value);
+				filterFunc = function(tiddler) {
+					return !funcList(tiddler);
+				};
+				break;
+			case 'function':
+				filterFunc = function(tiddler) {
+					return (block.value(tiddler)) ? true : false;
+				};
+				break;
+			default:
+				filterFunc = states[block.type].tiddlerTest(block.value);
+		}
+		return filterFunc;
+	};
+
+	filterFunc = loopAST(AST);
+
+	// Ensure that the tiddler passed in is not modified during testing
+	tiddlerTester = function(tiddler) {
+		var safeTid = $.extend(true, new tiddlyweb.Tiddler(), tiddler);
+		return filterFunc(safeTid);
+	};
+
+	return tiddlerTester;
+};
+
+return {
+	parse: parse,
+	match: match,
+	createTester: createTester
+};
 
 });

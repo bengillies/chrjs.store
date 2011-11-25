@@ -254,7 +254,7 @@ var requirejs, require, define;
     };
 }());
 
-define('filter-syntax',[],function() {
+define('filter',[],function() {
 
 // split the string up into a matched part and the rest, and remove any tokens
 // surrounding the matched part (left and regex).
@@ -576,7 +576,7 @@ return {
 
 });
 
-define('filter',['filter-syntax'], function(parser) {
+define('collection',['filter'], function(parser) {
 
 // Check if match is in field. fuzzy states whether exact match or just found in
 // default is false
@@ -1398,7 +1398,7 @@ return function(ev) {
 
 });
 
-define('store',['filter', 'event', 'cache', 'localStore', 'host', 'refresh', 'utils'],
+define('store',['collection', 'event', 'cache', 'localStore', 'host', 'refresh', 'utils'],
 	function(collection, events, cache, localStore, host, refresh, utils) {
 
 return function(tiddlerCallback, getCached, defaultContainers) {

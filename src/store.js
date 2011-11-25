@@ -1,4 +1,4 @@
-define(['filter', 'event', 'cache', 'localStore', 'host', 'refresh', 'utils'],
+define(['collection', 'event', 'cache', 'localStore', 'host', 'refresh', 'utils'],
 	function(collection, events, cache, localStore, host, refresh, utils) {
 
 return function(tiddlerCallback, getCached, defaultContainers) {
