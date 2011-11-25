@@ -87,11 +87,12 @@ define(['cache'], function(cache) {
 			for (key in store) {
 				if (store.hasOwnProperty(key)) {
 					tiddler = makeCopy(store[key]);
-					if (callback(tiddler) === false) {
+					if (callback(tiddler, tiddler.title) === false) {
 						return false;
 					}
 				}
 			}
+			return true;
 		};
 
 		// list all bags

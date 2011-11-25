@@ -19,6 +19,10 @@ var Tiddlers = function(store, tiddlers) {
 		$.each(tiddlers, function(i, tiddler) {
 			self.push(tiddler);
 		});
+	} else {
+		store.each(function(tiddler) {
+			self.push(tiddler);
+		});
 	}
 
 	$.extend(self, Tiddlers.fn);
@@ -197,7 +201,7 @@ Tiddlers.fn = {
 	},
 	// return the first n tiddlers in the list
 	limit: function(n) {
-		var newList = Tiddlers(this.store),
+		var newList = Tiddlers(this.store, []),
 			i, l;
 		for (i = 0, l = this.length; i < n && i < l; i++) {
 			newList.push(this[i]);
@@ -214,7 +218,7 @@ Tiddlers.fn = {
 	// returns a new instance of Tiddlers
 	map: function(fn) {
 		var self = this,
-			result = Tiddlers(self.store);
+			result = Tiddlers(self.store, []);
 		result.ast = self.ast;
 		result.ast.value.push({
 			type: 'function',
@@ -242,7 +246,7 @@ Tiddlers.fn = {
 	// turn the list of tiddlers into a set (i.e. make them unique)
 	unique: function() {
 		var set = {}, self = this,
-			result = Tiddlers(self.store);
+			result = Tiddlers(self.store, []);
 		$.each(this, function(i, tiddler) {
 			if (!set[tiddler.title]) {
 				set[tiddler.title] = tiddler;
