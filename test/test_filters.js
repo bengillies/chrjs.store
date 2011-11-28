@@ -27,7 +27,7 @@ test('title filter', function() {
 });
 
 test('tag filter', function() {
-	var tids = ts('tags', 'dog');
+	var tids = ts('tag', 'dog');
 	strictEqual(tids.length, 2);
 	$.each(tids, function(i, tid) {
 		strictEqual(!!~tid.tags.indexOf('dog'), true);
@@ -114,25 +114,24 @@ test('each filter', function() {
 
 test('map filter', function() {
 	var tids = ts();
+	expect(14);
 	strictEqual(tids.length, 6);
 	tids = tids.map(function(tid) {
-		strictEqual(tid instanceof tiddlyweb.Tiddler, true, 'a');
+		strictEqual(tid instanceof tiddlyweb.Tiddler, true, 'everything is a tiddler');
 		return tid.title;
 	});
-	strictEqual(tids.length, 6, 'c');
-	tids = tids.map(function(tid) {
-		strictEqual(typeof tid, 'string', 'b');
-		return null;
+	strictEqual(tids.length, 6, 'there are still 6 elements');
+	tids = tids.each(function(tid) {
+		strictEqual(typeof tid, 'string', 'tiddlers have been mapped to strings');
 	});
-	strictEqual(tids.length, 0, 'd');
 });
 
 test('reduce filter', function() {
 	var tids = ts(), count;
-	count = tids.reduce(0, function(tid, acc) {
+	count = tids.reduce(function(acc, tid) {
 		strictEqual(tid instanceof tiddlyweb.Tiddler, true);
 		return ++acc;
-	});
+	}, 0);
 	strictEqual(count, 6);
 });
 
@@ -185,26 +184,26 @@ test('limit', function() {
 });
 
 test('sort', function() {
-	var tids = ts('tags', 'cat');
+	var tids = ts('tag', 'cat');
 	tids.unshift(ts.get('HelloThere')); // make sure the list isn't sorted
 
-	var ascOrder = tids.sort('title').reduce('', function(tid, acc) {
+	var ascOrder = tids.sort('title').reduce(function(acc, tid) {
 		return acc + tid.title;
-	});
+	}, '');
 
 	strictEqual(ascOrder, 'BarFluffyFooHelloThere', 'Tiddlers are in asc order');
 
-	var descOrder = tids.sort('-title').reduce('', function(tid, acc) {
+	var descOrder = tids.sort('-title').reduce(function(acc, tid) {
 		return acc + tid.title;
-	});
+	}, '');
 
 	strictEqual(descOrder, 'HelloThereFooFluffyBar', 'Tiddlers are in desc order');
 
 	var defaultSort = tids.sort(function(a, b) {
 		return (a.title.toLowerCase() < b.title.toLowerCase()) ? -1 : 1;
-	}).reduce('', function(tid, acc) {
+	}).reduce(function(acc, tid) {
 		return acc + tid.title;
-	});
+	}, '');
 
 	strictEqual(defaultSort, 'BarFluffyFooHelloThere', 'Tiddlers are in asc order');
 
@@ -214,9 +213,9 @@ test('sort', function() {
 		modifier: 'zzzzzzzzz'
 	});
 	tids.push(dupTid);
-	var secondOrder = tids.sort('title, -modifier').reduce('', function(tid, acc) {
+	var secondOrder = tids.sort('title, -modifier').reduce(function(acc, tid) {
 		return acc + '{' + tid.title + (tid.modifier || '') + '}';
-	});
+	}, '');
 
 	strictEqual(secondOrder, '{Bar}{Fluffy}{Foozzzzzzzzz}{Foobengillies}{HelloTherebengillies}',
 		'Tiddlers are sorted by title (asc) then modifier (desc)');

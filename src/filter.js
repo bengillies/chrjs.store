@@ -72,8 +72,9 @@ var states = {
 		action: splitInner(1, Regexps.whitespace),
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				return (tiddler.bag.name.split(/_(public|private)$/)[0] ===
-					value) ? true : false;
+				var regex = /_(public|private|archive)$/;
+				return (tiddler.bag.name.replace(regex, '')
+					=== value) ? true : false;
 			};
 		}
 	},
@@ -315,7 +316,8 @@ var createTester = function(AST) {
 return {
 	parse: parse,
 	match: match,
-	createTester: createTester
+	createTester: createTester,
+	states: states
 };
 
 });

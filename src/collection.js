@@ -1,15 +1,5 @@
 define(['filter'], function(parser) {
 
-// Check if match is in field. fuzzy states whether exact match or just found in
-// default is false
-var contains = function(field, match, fuzzy) {
-	if ((!fuzzy) && (field && !(field instanceof Array))) {
-		return (field && field === match) ? true : false;
-	} else {
-		return (field && ~field.indexOf(match)) ? true : false;
-	}
-};
-
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
 var Tiddlers = function(store, tiddlers) {
 	var self = [];
@@ -37,9 +27,9 @@ Tiddlers.fn = {
 			AST = parser.parse(name);
 			filterFunc = parser.createTester(AST);
 
-			return this.map(function(t) { return (filterFunc(t)) ? t : null; });
+			return this.filter(function(t) { return (filterFunc(t)) ? t : null; });
 		} else if (typeof name === 'function') {
-			return this.map(name);
+			return this.filter(name);
 		} else if (this[name]) {
 			return this[name](match);
 		} else if (name) {
@@ -49,82 +39,75 @@ Tiddlers.fn = {
 		return this;
 	},
 	tag: function(match) {
-		return this.map(function(tiddler) {
-			return contains(tiddler.tags, match, true) ? tiddler : null;
-		});
+		return this.filter(parser.states.tag.tiddlerTest(match));
 	},
 	text: function(match) {
-		return this.map(function(tiddler) {
-			return contains(tiddler.text, match, true) ? tiddler : null;
-		});
+		return this.filter(parser.states.text.tiddlerTest(match));
 	},
 	title: function(match) {
-		return this.map(function(tiddler) {
-			return contains(tiddler.title, match, false) ? tiddler : null;
-		});
+		return this.filter(parser.states.title.tiddlerTest(match));
 	},
 	attr: function(name, match) {
-		var chkExists = (!match) ? true : false,
-			getValue = function(tiddler) {
-				return tiddler[name] || (tiddler.fields &&
-					tiddler.fields[name]);
-			};
-		return this.map(function(tiddler) {
-			if (chkExists) {
-				return (getValue(tiddler)) ? tiddler : null;
-			} else {
-				return contains(getValue(tiddler), match, false) ? tiddler : null;
-			}
-		});
+		if (!match) {
+			return this.filter(function(t) {
+				return t[name] || (t.fields && t.fields[name]);
+			});
+		} else {
+			return this.filter(parser.states.field.tiddlerTest({
+				field: name,
+				value: match
+			}));
+		}
 	},
 	not: function(name, match) {
-		var chkExists = (!match) ? true : false,
-			getValue = function(tiddler) {
-				return tiddler[name] || (tiddler.fields &&
-					tiddler.fields[name]);
-			};
-		return this.map(function(tiddler) {
-			if (chkExists) {
-				return (getValue(tiddler)) ? null : tiddler;
-			} else {
-				return contains(getValue(tiddler), match, false) ? null : tiddler;
-			}
-		});
+		if (!match) {
+			return this.filter(function(t) {
+				return !(t[name] || (t.fields && t.fields[name]));
+			});
+		} else {
+			return this.filter(parser.states.field.tiddlerTest({
+				field: name,
+				value: match,
+				not: true
+			}));
+		}
 	},
 	bag: function(name) {
-		return this.map(function(tiddler) {
+		return this.filter(function(tiddler) {
 			var bag = tiddler.bag && tiddler.bag.name;
-			return (bag === name) ? tiddler : null;
+			return (bag === name) ? true : false;
 		});
 	},
 	// the space the tiddler originates from (i.e. not just included in)
-	// blank/true matches the current space, false matches everything else
+	// blank/true matches the current space, false matches everything else (i.e. non-local)
+	// a string specifies the space name to match
 	space: function(name) {
 		var regex = /(_public|_private|_archive)$/,
-			current, spaceName;
-		if (name === true || name === undefined) {
-			current = true;
-		} else if (name === false) {
-			current = false;
+			nonLocal = false,
+			spaceName,
+			filterFunc = parser.states.space.tiddlerTest,
+			tester,
+			currentSpace = function(recipe) {
+				return recipe ? recipe.name.replace(regex, '') : null;
+			};
+
+		if (name === false) {
+			nonLocal = true;
+		} else if (typeof name === 'string') {
+			tester = filterFunc(name);
 		}
-		if (current !== undefined) {
-			spaceName = this.store.recipe &&
-				this.store.recipe.name.replace(regex, '');
+
+		if (!tester) {
+			spaceName = currentSpace(this.store.recipe);
+			tester = spaceName ? filterFunc(spaceName) : null;
 		}
-		return this.map(function(tiddler) {
-			var bag = (tiddler.bag && tiddler.bag.name).replace(regex, '');
-			if (!spaceName) {
-				spaceName = (this.store.recipe &&
-					this.store.recipe.name.replace(regex, '')) || bag;
+
+		return this.filter(function(t) {
+			if (!tester) {
+				tester = filterFunc(this.store.recipe || t.bag)
 			}
-			if (current) {
-				return (bag === spaceName) ? tiddler : null;
-			} else if (current === false) {
-				return (bag === spaceName) ? null: tiddler;
-			} else {
-				return (bag === name) ? tiddler : null;
-			}
-		});
+			return (nonLocal) ? !tester(t) : tester(t);
+		}, this);
 	},
 	// no arguments matches the default recipe
 	recipe: function(name) {
@@ -132,27 +115,27 @@ Tiddlers.fn = {
 		if (matchCurrent) {
 			recipe = this.store.recipe.name;
 		}
-		return this.map(function(tiddler) {
+		return this.filter(function(tiddler) {
 			if (!matchCurrent) {
 				recipe = tiddler.recipe && tiddler.recipe.name;
 			}
-			return (recipe === name) ? tiddler : null;
+			return (recipe === name) ? true : false;
 		});
 	},
 	// tiddlers that have been changed (i.e. not synced), lastSynced is optional and if present matches tiddlers that were synced before lastSynced
 	dirty: function(lastSynced) {
 		if (!lastSynced) {
-			return this.map(function(tiddler) {
-				return (tiddler.lastSync) ? null : tiddler;
+			return this.filter(function(tiddler) {
+				return (tiddler.lastSync) ? false : true;
 			});
 		} else {
-			return this.map(function(tiddler) {
+			return this.filter(function(tiddler) {
 				if (tiddler.lastSync) {
 					// return true if tiddler.lastSync is older than lastSynced
-					return (+tiddler.lastSync < +lastSynced) ? tiddler :
-						null;
+					return (+tiddler.lastSync < +lastSynced) ? true :
+						false;
 				} else {
-					return tiddler;
+					return true;
 				}
 			});
 		}
@@ -215,32 +198,49 @@ Tiddlers.fn = {
 		});
 		return self;
 	},
-	// returns a new instance of Tiddlers
-	map: function(fn) {
+	// works much like ES5 .filter, but returns a new Tiddlers collection as opposed to an array
+	filter: function(fn, thisArg) {
 		var self = this,
-			result = Tiddlers(self.store, []);
-		result.ast = self.ast;
-		result.ast.value.push({
+			thisArg = (thisArg !== undefined) ? thisArg : self,
+			res = Tiddlers(self.store, []);
+
+		res.ast = self.ast;
+		res.ast.value.push({
 			type: 'function',
-			value: function(tiddler) {
-				var res = fn.apply(result, [tiddler]);
-				return (res) ? true : false;
+			value: fn
+		});
+
+		$.each(self, function(i, tiddler) {
+			if (fn.call(thisArg, tiddler, i, self)) {
+				res.push(tiddler);
 			}
 		});
+
+		return res;
+	},
+	// works much like ES5 .map but returns a new Tiddlers collection as opposed to an array
+	map: function(fn, thisArg) {
+		var self = this,
+			result = Tiddlers(self.store, []),
+			thisArg = (thisArg !== undefined) ? thisArg : self;
+
 		$.each(self, function(i, tiddler) {
-			var mappedTiddler = fn.apply(self, [tiddler]);
-			if (mappedTiddler) {
-				result.push(mappedTiddler);
-			}
+			result.push(fn.call(thisArg, tiddler, i, self));
 		});
 		return result;
 	},
-	// pass in an initial value and a callback. Callback gets tiddler and current result, and returns new result
-	reduce: function(init, fn) {
-		var result = init, self = this;
-		$.each(self, function(i, tiddler) {
-			result = fn.apply(self, [tiddler, result]);
-		});
+	// works much like ES5 .reduce
+	reduce: function(fn, init) {
+		var i = (init === undefined) ? 1 : 0,
+			result = (!i) ? init : this[0],
+			self = this,
+			l = this.length,
+			tiddler;
+		for (; i < l; i++) {
+			tiddler = self[i];
+			result = fn.call(undefined, result, tiddler, i, self);
+
+		}
 		return result;
 	},
 	// turn the list of tiddlers into a set (i.e. make them unique)
