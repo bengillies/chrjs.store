@@ -580,16 +580,6 @@ return {
 
 define('collection',['filter'], function(parser) {
 
-// Check if match is in field. fuzzy states whether exact match or just found in
-// default is false
-var contains = function(field, match, fuzzy) {
-	if ((!fuzzy) && (field && !(field instanceof Array))) {
-		return (field && field === match) ? true : false;
-	} else {
-		return (field && ~field.indexOf(match)) ? true : false;
-	}
-};
-
 // the Tiddlers object is a list of tiddlers that you can operate on/filter. Get a list by calling the Store instance as a function (with optional filter)
 var Tiddlers = function(store, tiddlers) {
 	var self = [];

@@ -15,6 +15,19 @@ test('don\'t filter', function() {
 	strictEqual(ts().length, 6, 'There should be 6 tiddlers in the store');
 });
 
+test('filter function', function() {
+	var tids = ts();
+	expect(25);
+	var res = tids.filter(function(tid, pos, array) {
+		strictEqual(this.a, 'this becomes "this"', 'Check thisArg');
+		strictEqual(tid instanceof tiddlyweb.Tiddler, true, 'first arg is a tiddler');
+		strictEqual(typeof pos, 'number', 'second arg is a number');
+		strictEqual(array, tids, 'array is the original array');
+		return (pos % 2 === 0) ? true : false;
+	}, { a: 'this becomes "this"' });
+	strictEqual(res.length, 3, 'the list now contains half the tiddlers');
+});
+
 test('title filter', function() {
 	var tids = ts('title', 'Foo');
 	strictEqual(tids.length, 1);
