@@ -90,11 +90,11 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			res = {};
 
 		res.modified = modified.get(tid);
+		res.store = store.get(tid);
 		res.title = tid.title;
 		res.rawTiddler = tid;
 
-		res.tiddler = res.modified || store.get(tid) ||
-			((!isTitleOnly) ? o : null);
+		res.tiddler = res.modified || res.store || ((!isTitleOnly) ? o : null);
 
 		return res;
 	};
@@ -217,44 +217,40 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		return self;
 	};
 
-	// remove a tiddler, either locally from pending, from the store, or delete from the server.
-	// cllbck is optional. tid can be a tiddler object, a string with the title, or an object with the following:
-	// tiddler, server (bool, delete from server), callback, pending (bool, delete pending)
-	// default is don't delete from server, only remove pending
-	self.remove = function(tid, cllbck) {
-		var options = {
-			pending: true,
-			server: false,
-			tiddler: tid,
-			callback: cllbck || function() {}
-		};
+	// remove a tiddler, locally from modified.
+	self.remove = function(tiddler) {
+		var tid = getTid(tiddler);
 
-		if (!(tid instanceof tiddlyweb.Tiddler)) {
-			$.extend(options, tid);
+		if (tid.modified) {
+			modified.remove(tid.modified);
+			self.trigger('tiddler', tid.modified.title,
+				[tid.modified, 'deleted']);
+			return tid.modified;
 		}
-		$.extend(options, getTid(options.tiddler));
 
-		if (options.tiddler) {
-			if (options.pending && options.modified) {
-				modified.remove(options.tiddler);
-			}
-			if (options.server && (options.tiddler.bag ||
-					options.tiddler.recipe)) {
-				options.tiddler['delete'](function(tiddler) {
-					store.remove(tiddler);
-					self.trigger('tiddler', tiddler.title, [tiddler, 'deleted']);
-					options.callback(tiddler);
-				}, function(xhr, err, errMsg) {
-					options.callback((options.pending) ? options.tiddler : null,
-						new chrjsError('DeleteError',
-							'Error deleting ' + options.tiddler.title + ': '
+		return null;
+	};
+
+	// delete a tiddler from the server, and store, and modified (if it exists)
+	self.destroy = function(tiddler, callback) {
+		var tid = getTid(tiddler),
+			_remove = function(tiddler) {
+				store.remove(tiddler);
+				if (tid.modified) {
+					self.remove(tid.modified);
+				}
+				self.trigger('tiddler', tiddler.title, [tiddler, 'deleted']);
+				callback(tiddler);
+			};
+
+		if (tid.store && (tid.store.bag || tid.store.recipe)) {
+				tid.store['delete'](_remove, function(xhr, err, errMsg) {
+					callback(null, new chrjsError('DeleteError',
+							'Error deleting ' + tid.tiddler.title + ': '
 							+ errMsg), xhr);
 				});
-			} else {
-				self.trigger('tiddler', options.tiddler.title, [options.tiddler,
-					'deleted']);
-				options.callback(options.tiddler);
-			}
+		} else if (tid.modified) {
+			_remove(tid.modified);
 		}
 
 		return self;

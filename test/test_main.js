@@ -139,8 +139,8 @@ test('bind, unbind', function() {
 	strictEqual(called, 5, 'make sure unbind worked');
 });
 
-test('remove with options', function() {
-	expect(3);
+test('destroy', function() {
+	expect(2);
 	ts.save('foo', function() {
 		ts.add(new tiddlyweb.Tiddler({
 			title: 'foo',
@@ -148,17 +148,8 @@ test('remove with options', function() {
 		}));
 		// there are now two foo tiddlers, a saved one, and a non-saved one.
 		strictEqual(ts.get('foo').lastSync, null, 'foo is the unsaved one');
-		ts.remove({
-			tiddler: 'foo',
-			pending: true
-		}, function() {
-			strictEqual(ts.get('foo').lastSync != null, true, 'only the unsaved version was removed');
-			ts.remove({
-				tiddler: 'foo',
-				server: true
-			}, function() {
-				strictEqual(ts.get('foo'), null, 'the saved version was removed');
-			});
+		ts.destroy('foo', function() {
+			strictEqual(ts.get('foo'), null, 'every foo has been removed');
 		});
 	});
 });
