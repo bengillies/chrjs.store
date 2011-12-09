@@ -1572,8 +1572,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	// tiddler should be a tiddlyweb.Tiddler to save just that tiddler directly, or a callback to save all tiddlers in pending
 	self.save = function(tiddler, cllbck) {
 		var args = getTid(tiddler),
-			callback = (args.tiddler) ? (cllbck || function() {}) :
-				(tiddler || function() {}),
+			callback = cllbck || tiddler || function() {},
 			tiddler = args.modified || args.rawTiddler;
 
 		var saveTiddler;
@@ -1632,6 +1631,9 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			callback: cllbck || function() {}
 		};
 
+		if (!(tid instanceof tiddlyweb.Tiddler)) {
+			$.extend(options, tid);
+		}
 		$.extend(options, getTid(options.tiddler));
 
 		if (options.tiddler) {

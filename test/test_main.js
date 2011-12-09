@@ -139,6 +139,30 @@ test('bind, unbind', function() {
 	strictEqual(called, 5, 'make sure unbind worked');
 });
 
+test('remove with options', function() {
+	expect(3);
+	ts.save('foo', function() {
+		ts.add(new tiddlyweb.Tiddler({
+			title: 'foo',
+			text: 'foobar'
+		}));
+		// there are now two foo tiddlers, a saved one, and a non-saved one.
+		strictEqual(ts.get('foo').lastSync, null, 'foo is the unsaved one');
+		ts.remove({
+			tiddler: 'foo',
+			pending: true
+		}, function() {
+			strictEqual(ts.get('foo').lastSync != null, true, 'only the unsaved version was removed');
+			ts.remove({
+				tiddler: 'foo',
+				server: true
+			}, function() {
+				strictEqual(ts.get('foo'), null, 'the saved version was removed');
+			});
+		});
+	});
+});
+
 
 module('empty chrjs.store', {
 	setup: function() {
@@ -172,6 +196,7 @@ test('dirty', function() {
 	ts.add(tid);
 	strictEqual(ts().dirty().length, 1, "Adding same tiddler should keep one tiddler in the store.");
 });
+
 
 module('localStorage used for non store things', {
 	setup: function() {
