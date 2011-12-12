@@ -20,11 +20,11 @@
  *	$.extend(store.fn, treeFilters);
  */
 
-define('tree-filters', ['filter-syntax'], function(parser) {
+define('tree-filters', ['filter'], function(parser) {
 
 	// return parents of a tiddler
 	var _parents = function(store, list) {
-		var parentList = store.Collection(),
+		var parentList = store.Collection([]),
 			usedTags = [];
 
 		list.each(function(tiddler) {
@@ -47,9 +47,9 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 		var tagList = list.map(function(tiddler) {
 				return tiddler.title;
 			}),
-			childrenList = store.Collection(store());
+			childrenList = store.Collection();
 
-		return childrenList.map(function(tiddler) {
+		return childrenList.filter(function(tiddler) {
 			var result;
 			$.each(tiddler.tags || [], function(i, tag) {
 				if (~tagList.indexOf(tag)) {
@@ -126,7 +126,7 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 				return tiddler.title;
 			});
 
-			return this.map(function(tiddler) {
+			return this.filter(function(tiddler) {
 				var result;
 				$.each(tiddler.tags || [], function(i, tag) {
 					if (~allParents.indexOf(tag)) {
@@ -134,7 +134,7 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 						return false;
 					}
 				});
-				return result;
+				return !!result;
 			});
 		},
 		// return tiddlers that have a child that matches the filter
@@ -147,7 +147,7 @@ define('tree-filters', ['filter-syntax'], function(parser) {
 				return tiddler.tags;
 			});
 
-			return this.map(function(tiddler) {
+			return this.filter(function(tiddler) {
 				if (~tagList.indexOf(tiddler.title)) {
 					return tiddler;
 				}

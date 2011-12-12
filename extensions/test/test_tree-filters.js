@@ -69,15 +69,15 @@ test('hasParent', function() {
 		bag: new tiddlyweb.Bag('foo_public', '/')
 	}));
 
-	var tids = ts().hasParent().sort('title').reduce('', function(tid, acc) {
+	var tids = ts().hasParent().sort('title').reduce(function(acc, tid) {
 		return acc + tid.title;
-	});
+	}, '');
 	strictEqual(tids, 'BarFluffyFooRover', 'hasParent unfiltered returns original tiddlers');
 
-	var filteredTids = ts().hasParent('#parentTag').sort('title').reduce('',
-		function(tid, acc) {
+	var filteredTids = ts().hasParent('#parentTag').sort('title')
+		.reduce(function(acc, tid) {
 			return acc + tid.title;
-		});
+		}, '');
 	strictEqual(filteredTids, 'FooRover',
 		'hasParent filtered returns only tiddlers tagged with the dog tiddler');
 });
@@ -93,15 +93,15 @@ test('hasChildren', function() {
 		bag: new tiddlyweb.Tiddler('foo_public', '/')
 	}));
 
-	var tids = ts().hasChild().sort('title').reduce('', function(tid, acc) {
+	var tids = ts().hasChild().sort('title').reduce(function(acc, tid) {
 		return acc + tid.title;
-	});
+	}, '');
 	strictEqual(tids, 'BarFooHelloThere', 'hasChild returns original tiddlers');
 
-	var filteredTids = ts().hasChild('#childTag').sort('title').reduce('',
-		function(tid, acc) {
+	var filteredTids = ts().hasChild('#childTag').sort('title')
+		.reduce(function(acc, tid) {
 			return acc + tid.title;
-		});;
+		}, '');
 	strictEqual(filteredTids, 'Foo',
 		'hasChild filtered returns only tiddlers where child is tagged childTag');
 });
