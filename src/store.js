@@ -42,7 +42,6 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	});
 
 	var containers = refresh(ev);
-	self.getDefaults(function(c) { containers.set(store, c.pullFrom); });
 	$.extend(self, {
 		refresh: function(callback) {
 			containers.refresh(function(tiddlers) {
@@ -92,7 +91,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		res.modified = modified.get(tid);
 		res.store = store.get(tid);
 		res.title = tid.title;
-		res.rawTiddler = tid;
+		res.rawTiddler = (!isTitleOnly) ? o : undefined;
 
 		res.tiddler = res.modified || res.store || ((!isTitleOnly) ? o : null);
 
@@ -171,7 +170,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	self.save = function(tiddler, cllbck) {
 		var args = getTid(tiddler),
 			callback = cllbck || tiddler || function() {},
-			tiddler = args.modified || args.rawTiddler;
+			tiddler = args.rawTiddler || args.modified;
 
 		var saveTiddler;
 		saveTiddler = function(tiddler, callback) {
@@ -276,7 +275,10 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	});
 
 	if (tiddlerCallback) {
-		self.refresh(tiddlerCallback);
+		self.getDefaults(function(c) {
+			containers.set(store, c.pullFrom);
+			self.refresh(tiddlerCallback);
+		});
 	}
 
 	return self;

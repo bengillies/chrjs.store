@@ -2,6 +2,7 @@ define(['utils'], function(utils) {
 
 return function(ev) {
 	var containers = {};
+	var replace = utils.replace(ev);
 
 	var _removeDeleted = function(store, tiddlers) {
 		var keys = $.map(tiddlers, function(tid) { return tid.bag.name + tid.title; });
@@ -20,7 +21,7 @@ return function(ev) {
 		callback = callback || function() {};
 		obj.tiddlers.get(function(res) {
 			$.each(res, function(i, tiddler) {
-				utils.replace(obj.store, tiddler);
+				replace(obj.store, tiddler);
 			});
 			_removeDeleted(obj.store, res);
 			callback(res);
