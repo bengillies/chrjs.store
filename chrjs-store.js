@@ -1529,7 +1529,7 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 		} else if (callback && args.title) {
 			self.getDefaults(function(container) {
 				var tid = new tiddlyweb.Tiddler(args.title, container.pullFrom);
-				tid.get(success, error);
+				tid.get(success, error, (render) ? 'render=1' : '');
 			});
 		}
 
