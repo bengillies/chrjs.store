@@ -316,8 +316,8 @@ var states = {
 		},
 		tiddlerTest: function(value) {
 			return function(tiddler) {
-				var matches = (tiddler[value.field] || (tiddler.fields &&
-					tiddler.fields[value.field]) === value.value) ?
+				var matches = ((tiddler[value.field] || (tiddler.fields &&
+					tiddler.fields[value.field])) === value.value) ?
 						true : false;
 				return (value.not) ? !matches : matches;
 			};
