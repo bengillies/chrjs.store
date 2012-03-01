@@ -290,6 +290,9 @@ test('field', function() {
 	tids.each(function(tid) {
 		strictEqual(tid.fields.cake, 'lie');
 	});
+	tids = ts('[title=Foo]');
+	strictEqual(tids.length, 1);
+	strictEqual(tids[0].title, 'Foo', 'field filter should work on non fields');
 });
 
 test('space', function() {
