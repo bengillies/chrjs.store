@@ -34,8 +34,8 @@ define(['cache'], function(cache) {
 			} else if (!tiddler.bag) {
 				tidTester = $.extend(new tiddlyweb.Tiddler(), tiddler);
 				for (i = 0, l = bagList.length; i < l; i++) {
-					tiddler.bag = bagList[i];
-					match = store[createKey(tiddler)];
+					tidTester.bag = bagList[i];
+					match = store[createKey(tidTester)];
 					if (match) {
 						return makeCopy(match);
 					}
