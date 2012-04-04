@@ -1447,12 +1447,14 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	var containers = refresh(ev);
 	$.extend(self, {
 		refresh: function(callback) {
-			containers.refresh(function(tiddlers) {
-				if (tiddlers) {
-					callback.call(self, collection(self, tiddlers));
-				} else {
-					callback.apply(self, arguments);
-				}
+			self.getDefaults(function() {
+				containers.refresh(function(tiddlers) {
+					if (tiddlers) {
+						callback.call(self, collection(self, tiddlers));
+					} else {
+						callback.apply(self, arguments);
+					}
+				});
 			});
 
 			return self;
