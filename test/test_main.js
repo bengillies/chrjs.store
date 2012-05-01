@@ -154,6 +154,14 @@ test('destroy', function() {
 	});
 });
 
+test('multiple stores', function() {
+	var store = tiddlyweb.Store();
+
+	expect(1);
+	var store2 = tiddlyweb.Store(function() {
+		ok(true);
+	});
+});
 
 module('empty chrjs.store', {
 	setup: function() {

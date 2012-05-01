@@ -1237,10 +1237,12 @@ return function(container) {
 	// defaultContainer hasn't been discovered yet.
 	var getDefaultContainer = function(callback) {
 		var returnContainer = function(container) {
-			$.each(callbackQueue, function(i, fn) {
+			// queue up callbacks and call all of them once the one ajax call completes
+			var fn;
+			while (callbackQueue.length > 0) {
+				fn = callbackQueue.shift();
 				fn(container);
-			});
-			callbackQueue = [];
+			}
 			return container;
 		};
 
@@ -1249,8 +1251,10 @@ return function(container) {
 		}
 
 		if (defaultContainer) {
+			// no ajax call necessary so return immediately
 			return returnContainer(defaultContainer);
 		} else if (callbackQueue.length === 0) {
+			// only make one ajax call
 			determineContainer(function(container) {
 				defaultContainer = container;
 				returnContainer(container);
@@ -1435,9 +1439,8 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			// pullFrom: default location to refresh the store from
 			// pushTo: default location to save to
 			var res = defaults.getDefault(function(defaults) {
-				self.recipe = defaults.pullFrom;
-				containers.set(store, defaults.pullFrom);
 				if (callback) {
+					self.recipe = defaults.pullFrom;
 					callback(defaults);
 				}
 			});
@@ -1448,7 +1451,15 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 
 	$.extend(self, {
 		refresh: function(callback) {
-			self.getDefaults(function() {
+			console.log('in refresh');
+			self.getDefaults(function(defaults) {
+				console.log('in callback from refresh');
+				// if no containers set, use the default one
+				var noContainers = true;
+				containers.each(function() { noContainers = false; });
+				if (noContainers) {
+					containers.set(store, defaults.pullFrom);
+				}
 				containers.refresh(function(tiddlers) {
 					if (tiddlers) {
 						callback.call(self, collection(self, tiddlers));
@@ -1681,7 +1692,9 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 	});
 
 	if (tiddlerCallback) {
+		console.log('about to tiddlerCallback');
 		self.getDefaults(function(c) {
+			console.log('in callback from tiddlerCallback');
 			containers.set(store, c.pullFrom);
 			self.refresh(tiddlerCallback);
 		});

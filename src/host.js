@@ -81,10 +81,12 @@ return function(container) {
 	// defaultContainer hasn't been discovered yet.
 	var getDefaultContainer = function(callback) {
 		var returnContainer = function(container) {
-			$.each(callbackQueue, function(i, fn) {
+			// queue up callbacks and call all of them once the one ajax call completes
+			var fn;
+			while (callbackQueue.length > 0) {
+				fn = callbackQueue.shift();
 				fn(container);
-			});
-			callbackQueue = [];
+			}
 			return container;
 		};
 
@@ -93,8 +95,10 @@ return function(container) {
 		}
 
 		if (defaultContainer) {
+			// no ajax call necessary so return immediately
 			return returnContainer(defaultContainer);
 		} else if (callbackQueue.length === 0) {
+			// only make one ajax call
 			determineContainer(function(container) {
 				defaultContainer = container;
 				returnContainer(container);

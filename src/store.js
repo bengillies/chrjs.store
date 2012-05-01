@@ -32,9 +32,8 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 			// pullFrom: default location to refresh the store from
 			// pushTo: default location to save to
 			var res = defaults.getDefault(function(defaults) {
-				self.recipe = defaults.pullFrom;
-				containers.set(store, defaults.pullFrom);
 				if (callback) {
+					self.recipe = defaults.pullFrom;
 					callback(defaults);
 				}
 			});
@@ -45,7 +44,13 @@ return function(tiddlerCallback, getCached, defaultContainers) {
 
 	$.extend(self, {
 		refresh: function(callback) {
-			self.getDefaults(function() {
+			self.getDefaults(function(defaults) {
+				// if no containers set, use the default one
+				var noContainers = true;
+				containers.each(function() { noContainers = false; });
+				if (noContainers) {
+					containers.set(store, defaults.pullFrom);
+				}
 				containers.refresh(function(tiddlers) {
 					if (tiddlers) {
 						callback.call(self, collection(self, tiddlers));
